@@ -1,0 +1,37 @@
+{
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@github/stable-socket": "^1.1.0",
+    "@octokit/request": "^8.1.0",
+    "abort-controller-x": "^0.4.2",
+    "date-fns": "^2.30.0",
+    "hono": "^3.3.0",
+    "rfc4648": "^1.5.2",
+    "zod": "^3.21.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230710.0",
+    "@octokit/webhooks-types": "^7.1.0",
+    "prettier": "^2.8.8",
+    "prettier-plugin-organize-imports": "^3.2.2",
+    "prettier-plugin-pkg": "^0.17.1",
+    "typescript": "^5.1.6",
+    "wrangler": "^3.2.0"
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "printWidth": 120,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all",
+    "pluginSearchDirs": false,
+    "plugins": [
+      "prettier-plugin-pkg",
+      "prettier-plugin-organize-imports"
+    ]
+  }
+}
