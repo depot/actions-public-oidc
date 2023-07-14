@@ -20,14 +20,14 @@ export async function issueToken({issuer, audience, keyID, privateKey: privateKe
   const privateKey = await importPrivateKey(keyID, privateKeyData)
 
   const header = {alg: 'RS256', typ: 'JWT', kid: keyID}
-  const timestamp = Math.ceil(Number(new Date()) / 1000) // seconds
+  const timestamp = Math.floor(Number(new Date()) / 1000) // seconds
   const payload = {
     aud: audience,
     iss: issuer,
     jti: crypto.randomUUID(),
     iat: timestamp,
     nbf: timestamp,
-    exp: timestamp + 60 * 60, // 1 hour
+    exp: timestamp + 60 * 5, // 5 minutes
     ...claims,
   }
 

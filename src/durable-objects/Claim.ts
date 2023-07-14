@@ -14,8 +14,6 @@ export class Claim implements DurableObject {
   router = new Hono<Env>()
 
   constructor(public state: DurableObjectState, public env: Env['Bindings']) {
-    void state.storage.setAlarm(addSeconds(new Date(), 60))
-
     this.router.onError((err, {json}) => json({error: err.message}, 500))
     this.router.notFound(({json}) => json({error: 'not found'}, 404))
 
@@ -27,6 +25,7 @@ export class Claim implements DurableObject {
 
       const challengeCode = crypto.randomUUID()
 
+      await state.storage.setAlarm(addSeconds(new Date(), 60))
       await state.storage.put('issuer', data.issuer)
       await state.storage.put('claimData', result.data)
       await state.storage.put('challengeCode', challengeCode)
@@ -87,6 +86,7 @@ export class Claim implements DurableObject {
   async alarm() {
     console.log('Cleaning up')
     await this.state.storage.deleteAll()
+    await this.state.storage.deleteAlarm()
   }
 
   // Not used

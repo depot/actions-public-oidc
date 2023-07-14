@@ -34,6 +34,7 @@ export async function validateClaim(
   })
 
   const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 1000 * 60)
 
   const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
   if (runningJobs.length === 0) throw new Error('no running jobs')
@@ -59,6 +60,7 @@ export async function validateClaim(
   }
 
   const all = await Promise.allSettled(promises)
+  clearTimeout(timeout)
 
   const validated = all.find((result) => result.status === 'fulfilled' && result.value.validated)
   if (!validated) throw new Error('no validated jobs')

@@ -16,7 +16,7 @@ app.get('/', ({json}) => json({ok: true, docs: 'https://github.com/depot/actions
 
 // Token exchange endpoints ***************************************************
 
-app.post('/claim', async ({env, req, json}) => {
+app.post('/claim', async ({env, req}) => {
   const issuer = new URL(req.url).origin
   const id = env.CLAIM.newUniqueId()
   const stub = env.CLAIM.get(id)
