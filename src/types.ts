@@ -1,6 +1,7 @@
 import {z} from 'zod'
 
 export const claimSchema = z.object({
+  aud: z.string().optional(),
   eventName: z.literal('pull_request'),
   repo: z
     .string()

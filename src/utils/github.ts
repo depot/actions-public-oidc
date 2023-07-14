@@ -11,7 +11,11 @@ interface ClaimData {
   runID: number
 }
 
-export async function validateClaim(env: Env['Bindings'], claimData: ClaimData): Promise<TokenClaims> {
+export async function validateClaim(
+  env: Env['Bindings'],
+  claimData: ClaimData,
+  challengeCode: string,
+): Promise<TokenClaims> {
   const {data: run} = await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
     owner: claimData.owner,
     repo: claimData.repo,
@@ -46,7 +50,7 @@ export async function validateClaim(env: Env['Bindings'], claimData: ClaimData):
         env,
         controller.signal,
         `https://github.com/depot/actions-test/commit/${headSHA}/checks/${jobID}/live_logs`,
-        'Waiting for auth',
+        challengeCode,
       ).then((validated) => {
         if (validated) controller.abort()
         return {jobID, validated}
@@ -157,7 +161,7 @@ export async function validateChallengeCode(
           const records = message.split(RECORD_SEPARATOR)
           for (const record of records) {
             if (!record) continue
-            // console.log('RECV   ', record)
+            console.log('RECV   ', record)
             const data: LogMessage = JSON.parse(record)
             if (data.type === 1 && data.target === 'logConsoleLines') {
               push(data)
