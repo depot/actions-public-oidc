@@ -1,5 +1,8 @@
+name: rotate-keys
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: '0 12 1,15 * *' # 12:00 on the 1st and 15th of every month
 
 jobs:
   rotate-keys:
