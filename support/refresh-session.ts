@@ -8,6 +8,7 @@ declare global {
       PASSWORD: string
       OTP: string
     }
+    exit(code: number): void
   }
 }
 
@@ -47,4 +48,5 @@ async function main() {
 
 main().catch((err) => {
   console.error(err)
+  process.exit(1)
 })
