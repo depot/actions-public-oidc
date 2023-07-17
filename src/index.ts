@@ -111,3 +111,10 @@ app.get('/-/keys', async ({env, req, json}) => {
   )
   return json(keys)
 })
+
+app.post('/-/github-session', async ({env, req, json}) => {
+  await authenticateAdmin(env, req)
+  const body = await req.json()
+  await env.KEYS.put('github-session', body.session)
+  return json({ok: true})
+})

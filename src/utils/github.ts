@@ -118,10 +118,11 @@ export async function validateChallengeCode(
   url: string,
   code: string,
 ): Promise<boolean> {
+  const session = await env.KEYS.get('github-session')
   const res = await fetch(url, {
     headers: {
       Accept: 'application/json',
-      Cookie: env.SESSION_COOKIE,
+      Cookie: `user_session=${session}`,
     },
   })
   const body = await res.json<{data?: {authenticated_url: string}}>()

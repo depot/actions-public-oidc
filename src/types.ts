@@ -22,7 +22,6 @@ export interface Env {
   Bindings: {
     KEYS: KVNamespace
     ADMIN_TOKEN: string
-    SESSION_COOKIE: string
     GITHUB_TOKEN: string
     CLAIM: DurableObjectNamespace
   }
