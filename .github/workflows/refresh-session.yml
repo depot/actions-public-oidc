@@ -1,0 +1,45 @@
+name: refresh-session
+on:
+  workflow_dispatch: {}
+
+jobs:
+  refresh-session:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.x.x
+
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v1
+
+      - name: Configure 1Password Service Account
+        uses: 1password/load-secrets-action/configure@v1
+        with:
+          service-account-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
+      - name: Load credentials
+        uses: 1password/load-secrets-action@v1
+        env:
+          USERNAME: op://actions-oidc/GitHub - depot-public-oidc/username
+          PASSWORD: op://actions-oidc/GitHub - depot-public-oidc/password
+
+      - name: Load OTP token
+        run: |
+          echo "OTP=$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)" >> "$GITHUB_ENV"
+
+      - name: Refresh session
+        run: pnpm refresh-session
