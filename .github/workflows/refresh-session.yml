@@ -39,7 +39,9 @@ jobs:
 
       - name: Load OTP token
         run: |
-          echo "OTP=$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)" >> "$GITHUB_ENV"
+          export OTP="$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)"
+          echo "echo "::add-mask::$OTP"
+          echo "OTP=$OTP" >> "$GITHUB_ENV"
 
       - name: Refresh session
         run: pnpm refresh-session
