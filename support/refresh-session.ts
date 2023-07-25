@@ -24,7 +24,7 @@ async function main() {
   await page.getByRole('button', {name: 'Sign in'}).click()
   await page.getByPlaceholder('XXXXXX').click()
   await page.getByPlaceholder('XXXXXX').fill(process.env.OTP)
-  await page.getByLabel('Open user account menu').click()
+  await Promise.race([page.getByLabel('Open user account menu').click(), page.getByText('Confirm').click()])
   await page.getByRole('link', {name: 'Your profile'}).click()
   await page.getByRole('link', {name: process.env.USERNAME}).click()
   const cookies = await page.context().cookies()
