@@ -87,7 +87,7 @@ export class Claim implements DurableObject {
   }
 
   async alarm() {
-    console.log('Cleaning up')
+    console.log('Cleaning up Claim')
     await this.state.storage.deleteAll()
     await this.state.storage.deleteAlarm()
   }

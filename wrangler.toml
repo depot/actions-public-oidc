@@ -8,11 +8,18 @@ kv_namespaces = [
 ]
 
 [durable_objects]
-bindings = [{ name = "CLAIM", class_name = "Claim" }]
+bindings = [
+  { name = "CLAIM", class_name = "Claim" },
+  { name = "WATCHER", class_name = "Watcher" },
+]
 
 [[migrations]]
 tag = "v1"
 new_classes = ["Claim"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["Watcher"]
 
 [placement]
 mode = "smart"

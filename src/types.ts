@@ -24,6 +24,7 @@ export interface Env {
     ADMIN_TOKEN: string
     GITHUB_TOKEN: string
     CLAIM: DurableObjectNamespace
+    WATCHER: DurableObjectNamespace
   }
 }
 
