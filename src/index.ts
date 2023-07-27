@@ -7,6 +7,7 @@ import {Key, generateKey} from './utils/oidc'
 const app = new Hono<Env>()
 export default app
 export {Claim} from './durable-objects/Claim'
+export {Watcher} from './durable-objects/Watcher'
 
 // Common endpoints ***********************************************************
 

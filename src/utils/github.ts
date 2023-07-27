@@ -1,8 +1,5 @@
-import {StableSocket} from '@github/stable-socket'
 import {request} from '@octokit/request'
-import {isAbortError} from 'abort-controller-x'
 import {Env, TokenClaims} from '../types'
-import {EventIterator} from './EventIterator'
 
 interface ClaimData {
   owner: string
@@ -33,9 +30,6 @@ export async function validateClaim(
     headers: {authorization: `token ${env.GITHUB_TOKEN}`},
   })
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 1000 * 60)
-
   const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
   if (runningJobs.length === 0) throw new Error('no running jobs')
 
@@ -49,18 +43,15 @@ export async function validateClaim(
     promises.push(
       validateChallengeCode(
         env,
-        controller.signal,
         `https://github.com/${claimData.owner}/${claimData.repo}/commit/${headSHA}/checks/${jobID}/live_logs`,
         challengeCode,
       ).then((validated) => {
-        if (validated) controller.abort()
         return {jobID, validated}
       }),
     )
   }
 
   const all = await Promise.allSettled(promises)
-  clearTimeout(timeout)
 
   const validated = all.find((result) => result.status === 'fulfilled' && result.value.validated)
   if (!validated) throw new Error('no validated jobs')
@@ -104,103 +95,13 @@ export async function validateClaim(
   return validatedClaims
 }
 
-const RECORD_SEPARATOR = String.fromCharCode(0x1e)
-
-interface LogMessage {
-  type: number
-  target: string
-  arguments: {lines: string[]}[]
-}
-
-export async function validateChallengeCode(
-  env: Env['Bindings'],
-  signal: AbortSignal,
-  url: string,
-  code: string,
-): Promise<boolean> {
-  const session = await env.KEYS.get('github-session')
-  const res = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      Cookie: `user_session=${session}`,
-    },
+export async function validateChallengeCode(env: Env['Bindings'], url: string, code: string): Promise<boolean> {
+  const stub = env.WATCHER.get(env.WATCHER.idFromName(url))
+  const res = await stub.fetch('http://watcher/validate', {
+    method: 'POST',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({websocketURL: url, challengeCode: code}),
   })
-  const body = await res.json<{data?: {authenticated_url: string}}>()
-  if (!body || !body.data || !body.data.authenticated_url) return false
-
-  const res2 = await fetch(body.data.authenticated_url)
-  const body2 = await res2.json<{logStreamWebSocketUrl?: string}>()
-  if (!body2.logStreamWebSocketUrl) return false
-
-  const wsURL: string = body2.logStreamWebSocketUrl
-
-  const {searchParams} = new URL(wsURL)
-  const tenantId = searchParams.get('tenantId') ?? ''
-  const runId = searchParams.get('runId') ?? ''
-
-  let ws: StableSocket | undefined
-
-  const iterator = new EventIterator<LogMessage>(({push}) => {
-    ws = new StableSocket(
-      wsURL,
-      {
-        socketDidOpen() {
-          ws?.send(
-            JSON.stringify({
-              protocol: 'json',
-              version: 1,
-            }) + RECORD_SEPARATOR,
-          )
-          ws?.send(
-            JSON.stringify({
-              arguments: [tenantId, +runId],
-              target: 'WatchRunAsync',
-              type: 1,
-            }) + RECORD_SEPARATOR,
-          )
-        },
-        socketDidClose() {},
-        socketDidReceiveMessage(_socket, message) {
-          const records = message.split(RECORD_SEPARATOR)
-          for (const record of records) {
-            if (!record) continue
-            console.log('RECV   ', record)
-            const data: LogMessage = JSON.parse(record)
-            if (data.type === 1 && data.target === 'logConsoleLines') {
-              push(data)
-            }
-          }
-        },
-        socketDidFinish() {},
-        socketShouldRetry() {
-          return true
-        },
-      },
-      {timeout: 4000, attempts: 10},
-    )
-    ws.open()
-
-    signal.addEventListener('abort', () => {
-      ws?.close()
-    })
-
-    return () => ws?.close()
-  })
-
-  try {
-    for await (const message of iterator) {
-      signal.throwIfAborted()
-      const lines = message.arguments.flatMap((arg) => arg.lines)
-      if (lines.some((line) => line.includes(code))) {
-        return true
-      }
-    }
-  } catch (error) {
-    if (!isAbortError(error)) console.log('Websocket Error', error)
-    return false
-  } finally {
-    ws?.close()
-  }
-
-  return false
+  const data = await res.json<{validated: boolean}>()
+  return data.validated
 }
