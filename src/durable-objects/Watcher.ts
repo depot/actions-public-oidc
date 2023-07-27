@@ -14,8 +14,8 @@ export class Watcher implements DurableObject {
   router = new Hono<Env>()
 
   watcher: Promise<void> | undefined
-  challenges: Map<string, boolean> = new Map()
   controller: AbortController | undefined
+  challenges: Map<string, boolean> = new Map()
 
   constructor(public state: DurableObjectState, public env: Env['Bindings']) {
     this.router.onError((err, {json}) => {
@@ -62,21 +62,33 @@ export class Watcher implements DurableObject {
     const timeout = setTimeout(() => controller.abort(), 10 * 1000)
 
     console.log(`Starting watcher for ${websocketURL}`)
-    this.watcher = startWebsocketWatcher(session, controller.signal, websocketURL, (m) =>
+    const watcher = startWebsocketWatcher(session, controller.signal, websocketURL, (m) =>
       this.handleMessage(m),
     ).finally(() => {
       console.log(`Watcher for ${websocketURL} finished`)
-      this.watcher = undefined
       clearTimeout(timeout)
+      if (this.watcher !== watcher) return
+      this.watcher = undefined
+      this.controller = undefined
     })
+
+    this.watcher = watcher
     this.controller = controller
+  }
+
+  stopWatcher() {
+    this.controller?.abort()
+    this.watcher = undefined
+    this.controller = undefined
   }
 
   async handleMessage(message: LogMessage) {
     const lines = message.arguments.flatMap((arg) => arg.lines)
     for (const code of this.challenges.keys()) {
       if (lines.some((line) => line.includes(code))) {
+        console.log(`Challenge ${code} validated`)
         this.challenges.set(code, true)
+        this.stopWatcher()
         return
       }
     }
