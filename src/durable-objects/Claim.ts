@@ -14,7 +14,10 @@ export class Claim implements DurableObject {
   router = new Hono<Env>()
 
   constructor(public state: DurableObjectState, public env: Env['Bindings']) {
-    this.router.onError((err, {json}) => json({error: err.message}, 500))
+    this.router.onError((err, {json}) => {
+      console.error(err)
+      return json({error: err.message}, 500)
+    })
     this.router.notFound(({json}) => json({error: 'not found'}, 404))
 
     this.router.post('/claim', async ({req, json}) => {

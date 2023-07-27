@@ -50,7 +50,7 @@ export async function validateClaim(
       validateChallengeCode(
         env,
         controller.signal,
-        `https://github.com/depot/actions-test/commit/${headSHA}/checks/${jobID}/live_logs`,
+        `https://github.com/${claimData.owner}/${claimData.repo}/commit/${headSHA}/checks/${jobID}/live_logs`,
         challengeCode,
       ).then((validated) => {
         if (validated) controller.abort()
