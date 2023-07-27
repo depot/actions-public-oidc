@@ -39,7 +39,7 @@ export async function getIDToken(aud?: string): Promise<string> {
   }, 1000)
 
   try {
-    for (let i = 1; i < 5; i++) {
+    for (let i = 1; i < 60; i++) {
       const res = await client.post(exchangeURL, '')
       if (res.message.statusCode === 200) return await res.readBody()
       await sleep(1000)
