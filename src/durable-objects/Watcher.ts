@@ -62,15 +62,17 @@ export class Watcher implements DurableObject {
     const timeout = setTimeout(() => controller.abort(), 10 * 1000)
 
     console.log(`Starting watcher for ${websocketURL}`)
-    const watcher = startWebsocketWatcher(session, controller.signal, websocketURL, (m) =>
-      this.handleMessage(m),
-    ).finally(() => {
-      console.log(`Watcher for ${websocketURL} finished`)
-      clearTimeout(timeout)
-      if (this.watcher !== watcher) return
-      this.watcher = undefined
-      this.controller = undefined
-    })
+    const watcher = startWebsocketWatcher(session, controller.signal, websocketURL, (m) => this.handleMessage(m))
+      .catch((err) => {
+        console.log(`Watcher for ${websocketURL} errored`, err)
+      })
+      .finally(() => {
+        console.log(`Watcher for ${websocketURL} finished`)
+        clearTimeout(timeout)
+        if (this.watcher !== watcher) return
+        this.watcher = undefined
+        this.controller = undefined
+      })
 
     this.watcher = watcher
     this.controller = controller
@@ -121,17 +123,20 @@ async function startWebsocketWatcher(
     },
   })
   const body = await res.json<{data?: {authenticated_url: string}}>()
-  if (!body || !body.data || !body.data.authenticated_url) return
+  if (!body || !body.data || !body.data.authenticated_url)
+    throw new Error(`no authenticated_url: ${res.status} ${JSON.stringify(body)}`)
 
   const res2 = await fetch(body.data.authenticated_url)
   const body2 = await res2.json<{logStreamWebSocketUrl?: string}>()
-  if (!body2.logStreamWebSocketUrl) return
+  if (!body2.logStreamWebSocketUrl) throw new Error('no logStreamWebSocketUrl')
 
   const wsURL: string = body2.logStreamWebSocketUrl
 
   const {searchParams} = new URL(wsURL)
   const tenantId = searchParams.get('tenantId') ?? ''
   const runId = searchParams.get('runId') ?? ''
+
+  console.log(`Starting websocket for ${url}`)
 
   let ws: StableSocket | undefined
 

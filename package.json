@@ -4,7 +4,8 @@
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "logs": "wrangler tail",
-    "refresh-session": "tsx support/refresh-session.ts"
+    "refresh-session": "tsx support/refresh-session.ts",
+    "refresh-session:local": "env OTP=\"$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)\" USERNAME=depot-public-oidc PASSWORD=\"$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --fields password)\" LOCAL=true tsx support/refresh-session.ts"
   },
   "dependencies": {
     "@github/stable-socket": "^1.1.0",

@@ -7,13 +7,14 @@ declare global {
       USERNAME: string
       PASSWORD: string
       OTP: string
+      LOCAL?: string
     }
     exit(code: number): void
   }
 }
 
 async function main() {
-  const browser = await chromium.launch({headless: true})
+  const browser = await chromium.launch({headless: !Boolean(process.env.LOCAL)})
   const page = await browser.newPage()
   await page.goto('https://github.com/')
   await page.getByRole('link', {name: 'Sign in'}).click()
@@ -30,8 +31,12 @@ async function main() {
   const cookies = await page.context().cookies()
   const sessionCookie = cookies.find((c) => c.name === 'user_session')
 
-  if (sessionCookie) {
-    console.log('Updating GitHub session...')
+  if (!sessionCookie) throw new Error('no session cookie')
+
+  await page.screenshot({path: 'tmp/screenshot.png'})
+
+  console.log('Updating GitHub session...')
+  if (process.env.ADMIN_TOKEN) {
     await fetch('https://actions-public-oidc.depot.dev/-/github-session', {
       method: 'POST',
       headers: {
