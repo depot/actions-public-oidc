@@ -2,7 +2,7 @@ name: refresh-session
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '0 0 * * 0' # Every Sunday at midnight
+    - cron: '23 1 * * *' # Every day at 1:23 AM UTC
 
 jobs:
   refresh-session:
