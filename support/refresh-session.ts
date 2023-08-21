@@ -29,14 +29,18 @@ async function main() {
   await page.getByRole('link', {name: 'Your profile'}).click()
   await page.getByRole('link', {name: process.env.USERNAME}).click()
   const cookies = await page.context().cookies()
-  const sessionCookie = cookies.find((c) => c.name === '_gh_sess')
+  const sessionCookie = cookies.find((c) => c.name === 'user_session')
 
   if (!sessionCookie) throw new Error('no session cookie')
 
   await page.screenshot({path: 'tmp/screenshot.png'})
 
-  console.log('Updating GitHub session...')
+  if (process.env.LOCAL) {
+    console.log(sessionCookie)
+  }
+
   if (process.env.ADMIN_TOKEN) {
+    console.log('Updating GitHub session...')
     await fetch('https://actions-public-oidc.depot.dev/-/github-session', {
       method: 'POST',
       headers: {
