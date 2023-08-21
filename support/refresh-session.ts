@@ -29,7 +29,7 @@ async function main() {
   await page.getByRole('link', {name: 'Your profile'}).click()
   await page.getByRole('link', {name: process.env.USERNAME}).click()
   const cookies = await page.context().cookies()
-  const sessionCookie = cookies.find((c) => c.name === 'user_session')
+  const sessionCookie = cookies.find((c) => c.name === '_gh_sess')
 
   if (!sessionCookie) throw new Error('no session cookie')
 

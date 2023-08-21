@@ -119,7 +119,7 @@ async function startWebsocketWatcher(
   const res = await fetch(url, {
     headers: {
       Accept: 'application/json',
-      Cookie: `user_session=${session}`,
+      Cookie: `_gh_sess=${session}`,
     },
   })
   const body = await res.json<{data?: {authenticated_url: string}}>()
