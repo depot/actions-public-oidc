@@ -17,7 +17,7 @@ async function main() {
   const browser = await chromium.launch({headless: !Boolean(process.env.LOCAL)})
   const page = await browser.newPage()
   await page.goto('https://github.com/')
-  await page.getByRole('link', {name: 'Sign in'}).click()
+  await page.getByRole('link', {name: 'Sign in', exact: true}).click()
   await page.getByLabel('Username or email address').click()
   await page.getByLabel('Username or email address').fill(process.env.USERNAME)
   await page.getByLabel('Password').click()
