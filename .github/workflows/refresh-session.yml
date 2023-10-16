@@ -50,6 +50,8 @@ jobs:
 
       - name: Refresh session
         run: pnpm refresh-session || pnpm refresh-session
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
 
       - name: Save screenshot
         uses: actions/upload-artifact@v3
