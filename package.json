@@ -12,7 +12,7 @@
     "@octokit/request": "^8.1.0",
     "abort-controller-x": "^0.4.2",
     "date-fns": "^2.30.0",
-    "hono": "^3.3.0",
+    "hono": "^3.11.7",
     "rfc4648": "^1.5.2",
     "zod": "^3.22.3"
   },

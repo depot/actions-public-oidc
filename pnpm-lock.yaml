@@ -21,8 +21,8 @@ importers:
         specifier: ^2.30.0
         version: 2.30.0
       hono:
-        specifier: ^3.3.0
-        version: 3.3.0
+        specifier: ^3.11.7
+        version: 3.11.7
       rfc4648:
         specifier: ^1.5.2
         version: 1.5.2
@@ -1267,8 +1267,8 @@ packages:
     resolution: {integrity: sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==}
     dev: true
 
-  /hono@3.3.0:
-    resolution: {integrity: sha512-H15s0aRWebhry9d1yevYO2LqBbrJZTPZwui9S39mv6rZE9LdJWoYn2tWCa6etL3mlu5JHm0e3xVMcQiu2TfjJg==}
+  /hono@3.11.7:
+    resolution: {integrity: sha512-TcfAq7IdipF+9coxnuzYlSSBXbm9mTyWjjagLCv/2ampboNcKJdi+XCK5G48mHQtpI5+9Rj3J4FfcGgw9vzIww==}
     engines: {node: '>=16.0.0'}
     dev: false
 
