@@ -25,7 +25,7 @@
     "prettier-plugin-pkg": "^0.17.1",
     "tsx": "^3.12.7",
     "typescript": "^5.1.6",
-    "wrangler": "^3.2.0"
+    "wrangler": "^3.19.0"
   },
   "prettier": {
     "bracketSpacing": false,
