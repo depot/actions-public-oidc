@@ -88,7 +88,7 @@ export class Watcher implements DurableObject {
     const lines = message.arguments.flatMap((arg) => arg.lines)
     for (const code of this.challenges.keys()) {
       if (lines.some((line) => line.includes(code))) {
-        console.log(`Challenge ${code} validated`)
+        console.log(`Challenge ${code} validated with websocket`)
         this.challenges.set(code, true)
         this.stopWatcher()
         return
@@ -121,7 +121,7 @@ async function startWebsocketWatcher(
       Accept: 'application/json',
       Cookie: `user_session=${session}`,
       'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     },
   })
   const body = await res.json<{data?: {authenticated_url: string}}>()
