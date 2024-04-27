@@ -20,6 +20,3 @@ new_classes = ["Claim"]
 [[migrations]]
 tag = "v2"
 new_classes = ["Watcher"]
-
-[placement]
-mode = "smart"
