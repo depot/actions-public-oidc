@@ -178,9 +178,9 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
               'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           },
         })
-        const body = await backscrollRes.json<{lines: {line: string}[]}>()
+        const body = await backscrollRes.json<{lines?: {line: string}[]}>()
 
-        if (body.lines.some((line) => line.line.includes(code))) {
+        if (body.lines?.some((line) => line.line.includes(code))) {
           console.log(`Challenge ${code} validated with backscroll`, args)
           return true
         }
