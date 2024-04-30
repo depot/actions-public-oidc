@@ -3,6 +3,7 @@ import {Hono} from 'hono'
 import {ClaimSchema, Env, claimSchema} from '../types'
 import {validateClaim} from '../utils/github'
 import {Key, issueToken} from '../utils/oidc'
+import {retry} from '../utils/retry'
 
 export interface InitData {
   issuer: string
@@ -59,15 +60,19 @@ export class Claim implements DurableObject {
 
       console.log('Validating claim', claimData)
 
-      const validatedClaims = await validateClaim(
-        env,
-        {
-          eventName: claimData.eventName,
-          owner: claimData.repo.owner,
-          repo: claimData.repo.repo,
-          runID: claimData.runID,
-        },
-        challengeCode,
+      const validatedClaims = await retry(
+        () =>
+          validateClaim(
+            env,
+            {
+              eventName: claimData.eventName,
+              owner: claimData.repo.owner,
+              repo: claimData.repo.repo,
+              runID: claimData.runID,
+            },
+            challengeCode,
+          ),
+        {retries: 4, delay: 2000},
       )
 
       const token = await issueToken({
