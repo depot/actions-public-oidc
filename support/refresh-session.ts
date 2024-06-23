@@ -29,6 +29,7 @@ async function main() {
     await page.getByPlaceholder('XXXXXX').fill(process.env.OTP)
     await Promise.race([
       page.getByLabel('Open user account menu').click(),
+      page.getByLabel('Open user navigation menu').click(),
       page.getByRole('button', {name: 'Confirm'}).click(),
     ])
     await page.getByRole('link', {name: 'Your profile'}).click()
