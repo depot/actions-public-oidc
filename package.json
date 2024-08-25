@@ -1,5 +1,6 @@
 {
   "private": true,
+  "packageManager": "pnpm@9.8.0",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
