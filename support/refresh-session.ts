@@ -33,10 +33,10 @@ async function main() {
       page.getByRole('button', {name: 'Confirm'}).click(),
     ])
     await Promise.race([
-      page.getByRole('link', {name: 'Your profile'}).click(),
-      page.getByText('Your profile').first().click(),
+      await page.getByTitle(process.env.USERNAME).click(),
+      page.getByLabel('Open user account menu').click(),
+      page.getByLabel('Open user navigation menu').click(),
     ])
-    await page.getByRole('link', {name: process.env.USERNAME}).click()
     const cookies = await page.context().cookies()
     const sessionCookie = cookies.find((c) => c.name === 'user_session')
 
