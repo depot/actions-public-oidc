@@ -164,7 +164,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       },
     })
-    const body = await stepsRes.json<{id: string; status: string}[]>()
+    const body = await stepsRes.json() as {id: string; status: string}[]
     const runningSteps = body.filter((step) => step.status === 'in_progress')
 
     for (const step of runningSteps) {
@@ -178,7 +178,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
               'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           },
         })
-        const body = await backscrollRes.json<{lines?: {line: string}[]}>()
+        const body = await backscrollRes.json() as {lines?: {line: string}[]}
 
         if (body.lines?.some((line) => line.line.includes(code))) {
           console.log(`Challenge ${code} validated with backscroll`, args)
