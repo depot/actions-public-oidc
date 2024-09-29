@@ -1,15 +1,14 @@
 import {chromium} from 'playwright'
 
 declare global {
-  const process: {
-    env: {
+  namespace NodeJS {
+    interface ProcessEnv {
       ADMIN_TOKEN: string
       USERNAME: string
       PASSWORD: string
       OTP: string
       LOCAL?: string
     }
-    exit(code: number): void
   }
 }
 
