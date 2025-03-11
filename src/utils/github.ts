@@ -6,6 +6,7 @@ interface ClaimData {
   repo: string
   eventName: string
   runID: number
+  attempt?: number
 }
 
 export async function validateClaim(
@@ -18,22 +19,38 @@ export async function validateClaim(
 
   console.log('Validating claim', claimData)
 
-  const {data: run} = await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
-    owner: claimData.owner,
-    repo: claimData.repo,
-    run_id: claimData.runID,
-    headers: {authorization: `token ${env.GITHUB_TOKEN}`},
-  })
+  const {data: run} = claimData.attempt
+    ? await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
+        owner: claimData.owner,
+        repo: claimData.repo,
+        run_id: claimData.runID,
+        attempt_number: claimData.attempt,
+        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+      })
+    : await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
+        owner: claimData.owner,
+        repo: claimData.repo,
+        run_id: claimData.runID,
+        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+      })
 
   if (run.status !== 'in_progress') throw new Error('run not in progress')
   if (run.repository.private) throw new Error('repository is private')
 
-  const {data} = await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
-    owner: claimData.owner,
-    repo: claimData.repo,
-    run_id: claimData.runID,
-    headers: {authorization: `token ${env.GITHUB_TOKEN}`},
-  })
+  const {data} = claimData.attempt
+    ? await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs', {
+        owner: claimData.owner,
+        repo: claimData.repo,
+        run_id: claimData.runID,
+        attempt_number: claimData.attempt,
+        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+      })
+    : await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+        owner: claimData.owner,
+        repo: claimData.repo,
+        run_id: claimData.runID,
+        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+      })
 
   const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
   if (runningJobs.length === 0) throw new Error('no running jobs')

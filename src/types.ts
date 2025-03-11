@@ -16,6 +16,11 @@ export const claimSchema = z.object({
     .string()
     .refine((s) => /^\d+$/.test(s), {message: 'must be a number'})
     .transform((s) => parseInt(s, 10)),
+  attempt: z
+    .string()
+    .refine((s) => /^\d+$/.test(s), {message: 'must be a number'})
+    .transform((s) => parseInt(s, 10))
+    .optional(),
 })
 
 export type ClaimSchema = z.infer<typeof claimSchema>
