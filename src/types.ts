@@ -1,4 +1,6 @@
 import {z} from 'zod'
+import {Claim} from './durable-objects/Claim'
+import {Watcher} from './durable-objects/Watcher'
 
 export const claimSchema = z.object({
   aud: z.string().optional(),
@@ -23,8 +25,8 @@ export interface Env {
     KEYS: KVNamespace
     ADMIN_TOKEN: string
     GITHUB_TOKEN: string
-    CLAIM: DurableObjectNamespace
-    WATCHER: DurableObjectNamespace
+    CLAIM: DurableObjectNamespace<Claim>
+    WATCHER: DurableObjectNamespace<Watcher>
   }
 }
 

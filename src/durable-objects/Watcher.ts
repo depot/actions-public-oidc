@@ -1,7 +1,7 @@
 import {StableSocket} from '@github/stable-socket'
 import {isAbortError} from 'abort-controller-x'
+import {DurableObject} from 'cloudflare:workers'
 import {addSeconds} from 'date-fns'
-import {Hono} from 'hono'
 import {Env} from '../types'
 import {EventIterator} from '../utils/EventIterator'
 
@@ -10,49 +10,37 @@ export interface InitData {
   challengeCode: string
 }
 
-export class Watcher implements DurableObject {
-  router = new Hono<Env>()
-
+export class Watcher extends DurableObject<Env['Bindings']> {
   watcher: Promise<void> | undefined
   controller: AbortController | undefined
   challenges: Map<string, boolean> = new Map()
 
-  constructor(public state: DurableObjectState, public env: Env['Bindings']) {
-    this.router.onError((err, {json}) => {
-      console.error(err)
-      return json({error: err.message}, 500)
-    })
-
-    this.router.notFound(({json}) => json({error: 'not found'}, 404))
-
-    this.router.post('/validate', async ({req, json}) => {
-      await state.storage.setAlarm(addSeconds(new Date(), 60))
-
-      const {websocketURL, challengeCode}: InitData = await req.json()
-
-      if (this.challenges.get(challengeCode) === true) return json({validated: true})
-      this.challenges.set(challengeCode, false)
-
-      const session = await env.KEYS.get('github-session')
-      if (!session) return json({error: 'no github session'}, 500)
-      await this.startWatcher(websocketURL)
-
-      return json({validated: false})
-    })
+  constructor(state: DurableObjectState, env: Env['Bindings']) {
+    super(state, env)
   }
 
-  async fetch(request: Request) {
-    return this.router.fetch(request, this.env, {...this.state, passThroughOnException: () => {}})
+  async validate({websocketURL, challengeCode}: InitData) {
+    await this.ctx.storage.setAlarm(addSeconds(new Date(), 60))
+
+    if (this.challenges.get(challengeCode) === true) return {validated: true}
+    this.challenges.set(challengeCode, false)
+
+    const session = await this.env.KEYS.get('github-session')
+    if (!session) throw new Error('no github session')
+
+    await this.startWatcher(websocketURL)
+
+    return {validated: false}
   }
 
   async alarm() {
     console.log('Cleaning up Watcher')
     this.controller?.abort()
-    await this.state.storage.deleteAll()
-    await this.state.storage.deleteAlarm()
+    await this.ctx.storage.deleteAll()
+    await this.ctx.storage.deleteAlarm()
   }
 
-  async startWatcher(websocketURL: string) {
+  private async startWatcher(websocketURL: string) {
     if (this.watcher) return
 
     const session = await this.env.KEYS.get('github-session')
@@ -78,13 +66,13 @@ export class Watcher implements DurableObject {
     this.controller = controller
   }
 
-  stopWatcher() {
+  private stopWatcher() {
     this.controller?.abort()
     this.watcher = undefined
     this.controller = undefined
   }
 
-  async handleMessage(message: LogMessage) {
+  private async handleMessage(message: LogMessage) {
     const lines = message.arguments.flatMap((arg) => arg.lines)
     for (const code of this.challenges.keys()) {
       if (lines.some((line) => line.includes(code))) {
@@ -95,11 +83,6 @@ export class Watcher implements DurableObject {
       }
     }
   }
-
-  // Not used
-  webSocketMessage() {}
-  webSocketClose() {}
-  webSocketError() {}
 }
 
 const RECORD_SEPARATOR = String.fromCharCode(0x1e)

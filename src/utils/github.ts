@@ -16,6 +16,8 @@ export async function validateClaim(
   const session = await env.KEYS.get('github-session')
   if (!session) throw new Error('no github session')
 
+  console.log('Validating claim', claimData)
+
   const {data: run} = await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
     owner: claimData.owner,
     repo: claimData.repo,
@@ -115,12 +117,7 @@ export async function validateClaim(
 
 async function validateChallengeCode(env: Env['Bindings'], url: string, code: string): Promise<boolean> {
   const stub = env.WATCHER.get(env.WATCHER.idFromName(url))
-  const res = await stub.fetch('http://watcher/validate', {
-    method: 'POST',
-    headers: {'content-type': 'application/json'},
-    body: JSON.stringify({websocketURL: url, challengeCode: code}),
-  })
-  const data = await res.json<{validated: boolean}>()
+  const data = await stub.validate({websocketURL: url, challengeCode: code})
   return data.validated
 }
 
@@ -164,7 +161,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       },
     })
-    const body = await stepsRes.json() as {id: string; status: string}[]
+    const body = (await stepsRes.json()) as {id: string; status: string}[]
     const runningSteps = body.filter((step) => step.status === 'in_progress')
 
     for (const step of runningSteps) {
@@ -178,7 +175,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
               'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           },
         })
-        const body = await backscrollRes.json() as {lines?: {line: string}[]}
+        const body = (await backscrollRes.json()) as {lines?: {line: string}[]}
 
         if (body.lines?.some((line) => line.line.includes(code))) {
           console.log(`Challenge ${code} validated with backscroll`, args)
