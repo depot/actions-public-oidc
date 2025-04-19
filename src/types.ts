@@ -1,4 +1,6 @@
 import {z} from 'zod'
+import {Claim} from './durable-objects/Claim'
+import {Watcher} from './durable-objects/Watcher'
 
 export const claimSchema = z.object({
   aud: z.string().optional(),
@@ -14,6 +16,11 @@ export const claimSchema = z.object({
     .string()
     .refine((s) => /^\d+$/.test(s), {message: 'must be a number'})
     .transform((s) => parseInt(s, 10)),
+  attempt: z
+    .string()
+    .refine((s) => /^\d+$/.test(s), {message: 'must be a number'})
+    .transform((s) => parseInt(s, 10))
+    .optional(),
 })
 
 export type ClaimSchema = z.infer<typeof claimSchema>
@@ -23,8 +30,8 @@ export interface Env {
     KEYS: KVNamespace
     ADMIN_TOKEN: string
     GITHUB_TOKEN: string
-    CLAIM: DurableObjectNamespace
-    WATCHER: DurableObjectNamespace
+    CLAIM: DurableObjectNamespace<Claim>
+    WATCHER: DurableObjectNamespace<Watcher>
   }
 }
 

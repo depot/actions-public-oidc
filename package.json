@@ -18,7 +18,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241205.0",
+    "@cloudflare/workers-types": "^4.20250311.0",
     "@octokit/webhooks-types": "^7.6.1",
     "playwright": "^1.49.1",
     "prettier": "^3.4.2",
@@ -26,7 +26,7 @@
     "prettier-plugin-pkg": "^0.18.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "wrangler": "^3.95.0"
+    "wrangler": "^3.114.1"
   },
   "prettier": {
     "bracketSpacing": false,

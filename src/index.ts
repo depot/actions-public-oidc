@@ -11,24 +11,29 @@ export {Watcher} from './durable-objects/Watcher'
 
 // Common endpoints ***********************************************************
 
-app.onError((err, {json}) => json({error: err.message}, 500))
+app.onError((err, {json}) => {
+  console.error(err)
+  return json({error: err.message}, 500)
+})
 app.notFound(({json}) => json({error: 'not found'}, 404))
 app.get('/', ({json}) => json({ok: true, docs: 'https://github.com/depot/actions-public-oidc'}))
 
 // Token exchange endpoints ***************************************************
 
-app.post('/claim', async ({env, req}) => {
+app.post('/claim', async ({env, req, json}) => {
   const issuer = new URL(req.url).origin
   const id = env.CLAIM.newUniqueId()
   const stub = env.CLAIM.get(id)
   const data: InitData = {claimData: await req.json(), issuer, exchangeURL: `${issuer}/exchange/${id.toString()}`}
-  return stub.fetch(req.url, {method: 'POST', body: JSON.stringify(data)})
+  const res = await stub.claim(data)
+  return json(res)
 })
 
-app.post('/exchange/:id', async ({env, req}) => {
+app.post('/exchange/:id', async ({env, req, text}) => {
   const id = req.param('id')
   const stub = env.CLAIM.get(env.CLAIM.idFromString(id))
-  return stub.fetch('http://claim/exchange', {method: 'POST'})
+  const res = await stub.exchange()
+  return text(res)
 })
 
 // OIDC endpoints *************************************************************
