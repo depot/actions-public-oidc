@@ -50,6 +50,7 @@ jobs:
         run: pnpm refresh-session || pnpm refresh-session
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Save screenshot
         uses: actions/upload-artifact@v4

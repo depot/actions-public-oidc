@@ -8,7 +8,12 @@ jobs:
   rotate-keys:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          curl -X POST -H "Authorization: Bearer ${ADMIN_TOKEN}" https://actions-public-oidc.depot.dev/-/generate-key
+      - name: Install Sentry CLI
+        run: curl -sL https://sentry.io/get-cli/ | sh
+
+      - name: Rotate keys
+        run: |
+          sentry-cli monitors run actions-public-oidc-rotate-keys -- ./support/rotate-keys.sh
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}

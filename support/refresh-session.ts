@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import {chromium} from 'playwright'
 
 declare global {
@@ -13,6 +14,30 @@ declare global {
 }
 
 async function main() {
+  console.log('Starting refresh session...')
+  Sentry.init({dsn: process.env.SENTRY_DSN})
+
+  const checkInId = Sentry.captureCheckIn(
+    {monitorSlug: 'actions-public-oidc-refresh-session', status: 'in_progress'},
+    {
+      schedule: {type: 'crontab', value: '23 1 * * *'},
+      checkinMargin: 120, // 120 minutes
+      maxRuntime: 60, // 60 minutes
+      timezone: 'Etc/UTC',
+    },
+  )
+
+  try {
+    await run()
+    Sentry.captureCheckIn({checkInId, monitorSlug: 'actions-public-oidc-refresh-session', status: 'ok'})
+  } catch (err) {
+    Sentry.captureException(err)
+    Sentry.captureCheckIn({checkInId, monitorSlug: 'actions-public-oidc-refresh-session', status: 'error'})
+    throw err
+  }
+}
+
+async function run() {
   const browser = await chromium.launch({headless: !Boolean(process.env.LOCAL)})
   const page = await browser.newPage()
 
