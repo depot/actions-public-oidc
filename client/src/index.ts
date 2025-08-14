@@ -22,6 +22,7 @@ export async function getIDToken(aud?: string): Promise<string> {
     eventName: github.context.eventName,
     repo: `${github.context.repo.owner}/${github.context.repo.repo}`,
     runID: github.context.runId.toString(),
+    attempt: process.env.GITHUB_RUN_ATTEMPT,
   })
 
   if (res.statusCode >= 400) {
