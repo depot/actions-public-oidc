@@ -62,6 +62,7 @@ export class Claim extends DurableObject<Env['Bindings']> {
             owner: claimData.repo.owner,
             repo: claimData.repo.repo,
             runID: claimData.runID,
+            attempt: claimData.attempt,
           },
           challengeCode,
         ),
