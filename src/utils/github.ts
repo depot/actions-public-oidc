@@ -1,5 +1,6 @@
 import {request} from '@octokit/request'
 import type {Env, TokenClaims} from '../types'
+import {userAgent} from './userAgent'
 
 interface ClaimData {
   owner: string
@@ -139,8 +140,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
       headers: {
         Accept: 'text/html,*/*',
         Cookie: `user_session=${session}`,
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'User-Agent': userAgent,
       },
     })
     const pageText = await pageRes.text()
@@ -156,32 +156,36 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
       headers: {
         Accept: 'application/json',
         Cookie: `user_session=${session}`,
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'User-Agent': userAgent,
       },
     })
     const body = (await stepsRes.json()) as {id: string; status: string}[]
     const runningSteps = body.filter((step) => step.status === 'in_progress')
 
     for (const step of runningSteps) {
-      try {
-        console.log('Fetching backscroll for', step)
-        const backscrollRes = await fetch(`${jobURL}/steps/${step.id}/backscroll`, {
-          headers: {
-            Accept: 'application/json',
-            Cookie: `user_session=${session}`,
-            'User-Agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-          },
-        })
-        const body = (await backscrollRes.json()) as {lines?: {line: string}[]}
+      for (let i = 0; i < 4; i++) {
+        try {
+          console.log(`Fetching backscroll for step, attempt ${i + 1}`, step)
+          const backscrollRes = await fetch(`${jobURL}/steps/${step.id}/backscroll`, {
+            headers: {
+              Accept: 'application/json',
+              Cookie: `user_session=${session}`,
+              'User-Agent': userAgent,
+            },
+          })
+          const body = (await backscrollRes.json()) as {lines?: {line: string}[]}
 
-        if (body.lines?.some((line) => line.line.includes(code))) {
-          console.log(`Challenge ${code} validated with backscroll`, args)
-          return true
+          if (body.lines?.some((line) => line.line.includes(code))) {
+            console.log(`Challenge ${code} validated with backscroll`, args)
+            return true
+          }
+
+          console.log(body)
+        } catch (e) {
+          console.log('Error checking backscroll for step', step, e)
         }
-      } catch (e) {
-        console.log('Error checking backscroll for step', step, e)
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
   } catch (e) {

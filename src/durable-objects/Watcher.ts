@@ -4,6 +4,7 @@ import {DurableObject} from 'cloudflare:workers'
 import {addSeconds} from 'date-fns'
 import type {Env} from '../types'
 import {EventIterator} from '../utils/EventIterator'
+import {userAgent} from '../utils/userAgent'
 
 export interface InitData {
   websocketURL: string
@@ -99,8 +100,7 @@ async function startWebsocketWatcher(
     headers: {
       Accept: 'application/json',
       Cookie: `user_session=${session}`,
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'User-Agent': userAgent,
     },
   })
   const body = await res.json<{data?: {authenticated_url: string}}>()
