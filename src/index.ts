@@ -1,8 +1,9 @@
 import {Hono} from 'hono'
-import {InitData} from './durable-objects/Claim'
-import {Env} from './types'
+import type {InitData} from './durable-objects/Claim'
+import type {Env} from './types'
 import {authenticateAdmin} from './utils/auth'
-import {Key, generateKey} from './utils/oidc'
+import type {Key} from './utils/oidc'
+import {generateKey} from './utils/oidc'
 
 const app = new Hono<Env>()
 export default app

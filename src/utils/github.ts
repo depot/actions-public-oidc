@@ -1,5 +1,5 @@
 import {request} from '@octokit/request'
-import {Env, TokenClaims} from '../types'
+import type {Env, TokenClaims} from '../types'
 
 interface ClaimData {
   owner: string
@@ -61,8 +61,6 @@ export async function validateClaim(
     const jobID = job.id
     const headSHA = job.head_sha
     if (!jobID || !headSHA) continue
-
-    const jobURL = `https://github.com/${claimData.owner}/${claimData.repo}/actions/runs/${claimData.runID}/jobs/${jobID}`
 
     promises.push(
       validateChallengeCodeWithBackscroll({

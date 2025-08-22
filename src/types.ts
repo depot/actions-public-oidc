@@ -1,6 +1,6 @@
 import {z} from 'zod'
-import {Claim} from './durable-objects/Claim'
-import {Watcher} from './durable-objects/Watcher'
+import type {Claim} from './durable-objects/Claim'
+import type {Watcher} from './durable-objects/Watcher'
 
 export const claimSchema = z.object({
   aud: z.string().optional(),

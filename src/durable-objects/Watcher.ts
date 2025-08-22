@@ -2,7 +2,7 @@ import {StableSocket} from '@github/stable-socket'
 import {isAbortError} from 'abort-controller-x'
 import {DurableObject} from 'cloudflare:workers'
 import {addSeconds} from 'date-fns'
-import {Env} from '../types'
+import type {Env} from '../types'
 import {EventIterator} from '../utils/EventIterator'
 
 export interface InitData {
@@ -14,10 +14,6 @@ export class Watcher extends DurableObject<Env['Bindings']> {
   watcher: Promise<void> | undefined
   controller: AbortController | undefined
   challenges: Map<string, boolean> = new Map()
-
-  constructor(state: DurableObjectState, env: Env['Bindings']) {
-    super(state, env)
-  }
 
   async validate({websocketURL, challengeCode}: InitData) {
     await this.ctx.storage.setAlarm(addSeconds(new Date(), 60))
