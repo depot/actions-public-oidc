@@ -1,5 +1,5 @@
 import {base64url} from 'rfc4648'
-import {TokenClaims} from '../types'
+import type {TokenClaims} from '../types'
 
 const keyAlg = {
   name: 'RSASSA-PKCS1-v1_5',
@@ -20,7 +20,7 @@ export async function issueToken({issuer, audience, keyID, privateKey: privateKe
   const privateKey = await importPrivateKey(keyID, privateKeyData)
 
   const header = {alg: 'RS256', typ: 'JWT', kid: keyID}
-  const timestamp = Math.floor(Number(new Date()) / 1000) // seconds
+  const timestamp = Math.floor(Date.now() / 1000) // seconds
   const payload = {
     aud: audience,
     iss: issuer,

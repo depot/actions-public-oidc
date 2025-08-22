@@ -1,8 +1,10 @@
 import {DurableObject} from 'cloudflare:workers'
 import {addSeconds} from 'date-fns'
-import {ClaimSchema, Env, claimSchema} from '../types'
+import type {ClaimSchema, Env} from '../types'
+import {claimSchema} from '../types'
 import {validateClaim} from '../utils/github'
-import {Key, issueToken} from '../utils/oidc'
+import type {Key} from '../utils/oidc'
+import {issueToken} from '../utils/oidc'
 import {retry} from '../utils/retry'
 
 export interface InitData {
@@ -12,10 +14,6 @@ export interface InitData {
 }
 
 export class Claim extends DurableObject<Env['Bindings']> {
-  constructor(ctx: DurableObjectState, env: Env['Bindings']) {
-    super(ctx, env)
-  }
-
   async claim(data: InitData) {
     const result = claimSchema.safeParse(data.claimData)
     if (!result.success) throw new Error(`Invalid claim: ${result.error.issues}`)

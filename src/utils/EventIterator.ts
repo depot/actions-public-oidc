@@ -97,7 +97,7 @@ class EventQueue<T> {
 
   [Symbol.asyncIterator](): AsyncIterator<T> {
     return {
-      next: (value?: any) => {
+      next: (_value?: unknown) => {
         const result = this.pushQueue.shift()
         if (result) {
           if (this.lowWaterMark !== undefined && this.pushQueue.length <= this.lowWaterMark && this.isPaused) {

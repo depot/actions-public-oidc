@@ -1,7 +1,7 @@
-import {HonoRequest} from 'hono'
-import {Env} from '../types'
+import type {HonoRequest} from 'hono'
+import type {Env} from '../types'
 
-export async function authenticateAdmin(env: Env['Bindings'], req: HonoRequest<any>) {
+export async function authenticateAdmin(env: Env['Bindings'], req: HonoRequest<string>) {
   const header = req.header('authorization')
   if (!header) throw new Error('missing authorization header')
   const [type, token] = header.split(' ')

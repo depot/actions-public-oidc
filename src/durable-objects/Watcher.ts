@@ -2,8 +2,9 @@ import {StableSocket} from '@github/stable-socket'
 import {isAbortError} from 'abort-controller-x'
 import {DurableObject} from 'cloudflare:workers'
 import {addSeconds} from 'date-fns'
-import {Env} from '../types'
+import type {Env} from '../types'
 import {EventIterator} from '../utils/EventIterator'
+import {userAgent} from '../utils/userAgent'
 
 export interface InitData {
   websocketURL: string
@@ -14,10 +15,6 @@ export class Watcher extends DurableObject<Env['Bindings']> {
   watcher: Promise<void> | undefined
   controller: AbortController | undefined
   challenges: Map<string, boolean> = new Map()
-
-  constructor(state: DurableObjectState, env: Env['Bindings']) {
-    super(state, env)
-  }
 
   async validate({websocketURL, challengeCode}: InitData) {
     await this.ctx.storage.setAlarm(addSeconds(new Date(), 60))
@@ -103,8 +100,7 @@ async function startWebsocketWatcher(
     headers: {
       Accept: 'application/json',
       Cookie: `user_session=${session}`,
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'User-Agent': userAgent,
     },
   })
   const body = await res.json<{data?: {authenticated_url: string}}>()
