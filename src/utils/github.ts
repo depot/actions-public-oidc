@@ -76,16 +76,6 @@ export async function validateClaim(
         return {jobID, validated}
       }),
     )
-
-    promises.push(
-      validateChallengeCode(
-        env,
-        `https://github.com/${claimData.owner}/${claimData.repo}/commit/${headSHA}/checks/${jobID}/live_logs`,
-        challengeCode,
-      ).then((validated) => {
-        return {jobID, validated}
-      }),
-    )
   }
 
   const all = await Promise.allSettled(promises)
@@ -130,12 +120,6 @@ export async function validateClaim(
   }
 
   return validatedClaims
-}
-
-async function validateChallengeCode(env: Env['Bindings'], url: string, code: string): Promise<boolean> {
-  const stub = env.WATCHER.get(env.WATCHER.idFromName(url))
-  const data = await stub.validate({websocketURL: url, challengeCode: code})
-  return data.validated
 }
 
 interface BackscrollArgs {
