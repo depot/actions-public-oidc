@@ -175,12 +175,14 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
           })
           const body = (await backscrollRes.json()) as {lines?: {line: string}[]}
 
+          if (Array.isArray(body.lines)) {
+            body.lines.reverse()
+          }
+
           if (body.lines?.some((line) => line.line.includes(code))) {
             console.log(`Challenge ${code} validated with backscroll`, args)
             return true
           }
-
-          console.log(body)
         } catch (e) {
           console.log('Error checking backscroll for step', step, e)
         }
