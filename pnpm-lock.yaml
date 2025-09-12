@@ -24,8 +24,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       hono:
-        specifier: ^4.6.13
-        version: 4.6.13
+        specifier: ^4.9.7
+        version: 4.9.7
       rfc4648:
         specifier: ^1.5.4
         version: 1.5.4
@@ -1157,8 +1157,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.6.13:
-    resolution: {integrity: sha512-haV0gaMdSjy9URCRN9hxBPlqHa7fMm/T72kAImIxvw4eQLbNz1rgjN4hHElLJSieDiNuiIAXC//cC6YGz2KCbg==}
+  hono@4.9.7:
+    resolution: {integrity: sha512-t4Te6ERzIaC48W3x4hJmBwgNlLhmiEdEE5ViYb02ffw4ignHNHa5IBtPjmbKstmtKa8X6C35iWwK4HaqvrzG9w==}
     engines: {node: '>=16.9.0'}
 
   import-in-the-middle@1.14.2:
@@ -2391,7 +2391,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.6.13: {}
+  hono@4.9.7: {}
 
   import-in-the-middle@1.14.2:
     dependencies:
