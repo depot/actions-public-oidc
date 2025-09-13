@@ -1,6 +1,10 @@
 import {request} from '@octokit/request'
-import type {Env, TokenClaims} from '../types'
+import type {TokenClaims} from '../types'
+import {getGitHubSession} from './dynamodb'
+import {logger} from './logger'
 import {userAgent} from './userAgent'
+
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 interface ClaimData {
   owner: string
@@ -10,15 +14,11 @@ interface ClaimData {
   attempt?: number
 }
 
-export async function validateClaim(
-  env: Env['Bindings'],
-  claimData: ClaimData,
-  challengeCode: string,
-): Promise<TokenClaims> {
-  const session = await env.KEYS.get('github-session')
+export async function validateClaim(claimData: ClaimData, challengeCode: string): Promise<TokenClaims> {
+  const session = await getGitHubSession()
   if (!session) throw new Error('no github session')
 
-  console.log('Validating claim', claimData)
+  logger.info('Validating claim', claimData)
 
   const {data: run} = claimData.attempt
     ? await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
@@ -26,13 +26,13 @@ export async function validateClaim(
         repo: claimData.repo,
         run_id: claimData.runID,
         attempt_number: claimData.attempt,
-        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
     : await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
         owner: claimData.owner,
         repo: claimData.repo,
         run_id: claimData.runID,
-        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
 
   if (run.status !== 'in_progress') throw new Error('run not in progress')
@@ -44,13 +44,13 @@ export async function validateClaim(
         repo: claimData.repo,
         run_id: claimData.runID,
         attempt_number: claimData.attempt,
-        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
     : await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
         owner: claimData.owner,
         repo: claimData.repo,
         run_id: claimData.runID,
-        headers: {authorization: `token ${env.GITHUB_TOKEN}`},
+        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
 
   const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
@@ -131,7 +131,7 @@ interface BackscrollArgs {
 }
 
 async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promise<boolean> {
-  console.log('Validating challenge with backscroll', args)
+  logger.info('Validating challenge with backscroll', args)
 
   try {
     const {session, org, repo, runID, jobID, code} = args
@@ -146,7 +146,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
     const pageText = await pageRes.text()
     const match = pageText.match(backscrollRegex)
     if (!match) {
-      console.log('No backscroll job ID found', args)
+      logger.info('No backscroll job ID found', args)
       return false
     }
     const backscrollJobID = match[1]
@@ -165,7 +165,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
     for (const step of runningSteps) {
       for (let i = 0; i < 4; i++) {
         try {
-          console.log(`Fetching backscroll for step, attempt ${i + 1}`, step)
+          logger.info(`Fetching backscroll for step, attempt ${i + 1}`, step)
           const backscrollRes = await fetch(`${jobURL}/steps/${step.id}/backscroll`, {
             headers: {
               Accept: 'application/json',
@@ -180,18 +180,18 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
           }
 
           if (body.lines?.some((line) => line.line.includes(code))) {
-            console.log(`Challenge ${code} validated with backscroll`, args)
+            logger.info(`Challenge ${code} validated with backscroll`, args)
             return true
           }
         } catch (e) {
-          console.log('Error checking backscroll for step', step, e)
+          logger.error(`Error checking backscroll for step: ${e}`, step)
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
   } catch (e) {
-    console.log('Error fething backscroll', e, args)
+    logger.error(`Error fething backscroll: ${e}`, args)
   }
 
   return false

@@ -1,39 +1,26 @@
-import {z} from 'zod'
-import type {Claim} from './durable-objects/Claim'
-import type {Watcher} from './durable-objects/Watcher'
+import {z} from 'zod/mini'
 
 export const claimSchema = z.object({
-  aud: z.string().optional(),
+  aud: z.optional(z.string()),
   eventName: z.literal('pull_request'),
-  repo: z
-    .string()
-    .refine((s) => /.+\/.+/.test(s), {message: 'must be in the form owner/repo'})
-    .transform((s) => {
+  repo: z.pipe(
+    z.string().check(z.refine((s) => /.+\/.+/.test(s), {error: 'must be in the form owner/repo'})),
+    z.transform((s) => {
       const [owner, repo] = s.split('/')
       return {owner, repo}
     }),
-  runID: z
-    .string()
-    .refine((s) => /^\d+$/.test(s), {message: 'must be a number'})
-    .transform((s) => parseInt(s, 10)),
-  attempt: z
-    .string()
-    .refine((s) => /^\d+$/.test(s), {message: 'must be a number'})
-    .transform((s) => parseInt(s, 10))
-    .optional(),
+  ),
+  runID: z.pipe(
+    z.string().check(z.refine((s) => /^\d+$/.test(s), {error: 'must be a number'})),
+    z.transform((s) => parseInt(s, 10)),
+  ),
+  attempt: z.pipe(
+    z.optional(z.string().check(z.refine((s) => /^\d+$/.test(s), {error: 'must be a number'}))),
+    z.transform((s) => (s ? parseInt(s, 10) : undefined)),
+  ),
 })
 
 export type ClaimSchema = z.infer<typeof claimSchema>
-
-export interface Env {
-  Bindings: {
-    KEYS: KVNamespace
-    ADMIN_TOKEN: string
-    GITHUB_TOKEN: string
-    CLAIM: DurableObjectNamespace<Claim>
-    WATCHER: DurableObjectNamespace<Watcher>
-  }
-}
 
 export interface TokenClaims {
   sub: string
