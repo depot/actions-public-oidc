@@ -1,3 +1,4 @@
+import type {webcrypto} from 'node:crypto'
 import {base64url} from 'rfc4648'
 import type {TokenClaims} from '../types'
 
@@ -12,7 +13,7 @@ export interface TokenParams {
   issuer: string
   audience: string
   keyID: string
-  privateKey: JsonWebKey
+  privateKey: webcrypto.JsonWebKey
   claims: TokenClaims
 }
 
@@ -57,8 +58,8 @@ export function encodeObject(object: object) {
   return base64url.stringify(new TextEncoder().encode(JSON.stringify(object)), {pad: false})
 }
 
-const _privateKeyMap = new Map<string, CryptoKey>()
-async function importPrivateKey(keyID: string, keyData: JsonWebKey) {
+const _privateKeyMap = new Map<string, webcrypto.CryptoKey>()
+async function importPrivateKey(keyID: string, keyData: webcrypto.JsonWebKey) {
   const existing = _privateKeyMap.get(keyID)
   if (existing) return existing
   const privateKey = await crypto.subtle.importKey('jwk', keyData, keyAlg, true, ['sign'])
@@ -66,16 +67,20 @@ async function importPrivateKey(keyID: string, keyData: JsonWebKey) {
   return privateKey
 }
 
+export interface JsonWebKeyWithKid extends webcrypto.JsonWebKey {
+  kid: string
+}
+
 export interface Key {
   id: string
   publicKey: JsonWebKeyWithKid
-  privateKey: JsonWebKey
+  privateKey: webcrypto.JsonWebKey
 }
 
 export async function generateKey(): Promise<Key> {
-  const keyPair = (await crypto.subtle.generateKey(keyAlg, true, ['sign', 'verify'])) as CryptoKeyPair
-  const publicKey = (await crypto.subtle.exportKey('jwk', keyPair.publicKey)) as JsonWebKey
-  const privateKey = (await crypto.subtle.exportKey('jwk', keyPair.privateKey)) as JsonWebKey
+  const keyPair = await crypto.subtle.generateKey(keyAlg, true, ['sign', 'verify'])
+  const publicKey = await crypto.subtle.exportKey('jwk', keyPair.publicKey)
+  const privateKey = await crypto.subtle.exportKey('jwk', keyPair.privateKey)
   const keyID = crypto.randomUUID()
   return {id: keyID, publicKey: {...publicKey, kid: keyID}, privateKey}
 }

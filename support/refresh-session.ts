@@ -38,7 +38,7 @@ async function main() {
 }
 
 async function run() {
-  const browser = await chromium.launch({headless: !Boolean(process.env.LOCAL)})
+  const browser = await chromium.launch({headless: !process.env.LOCAL})
   const page = await browser.newPage()
 
   try {

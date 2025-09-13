@@ -1,14 +1,31 @@
-import {Hono} from 'hono'
-import type {InitData} from './durable-objects/Claim'
-import type {Env} from './types'
-import {authenticateAdmin} from './utils/auth'
-import type {Key} from './utils/oidc'
-import {generateKey} from './utils/oidc'
+// Import otel first
+import './utils/otel'
 
-const app = new Hono<Env>()
-export default app
-export {Claim} from './durable-objects/Claim'
-export {Watcher} from './durable-objects/Watcher'
+// Import everything else after
+import {otel} from '@hono/otel'
+import {Hono} from 'hono'
+import {handle} from 'hono/aws-lambda'
+import {logger as loggerMiddleware} from 'hono/logger'
+import {claimSchema} from './types'
+import {authenticateAdmin} from './utils/auth'
+import {
+  createClaim,
+  exchangeClaim,
+  getAllKeys,
+  getLatestKey,
+  setGitHubSession,
+  setLatestKey,
+  storeKey,
+} from './utils/dynamodb'
+import {validateClaim} from './utils/github'
+import {logger} from './utils/logger'
+import {generateKey, issueToken} from './utils/oidc'
+import {retry} from './utils/retry'
+
+const app = new Hono()
+app.use(otel())
+app.use(loggerMiddleware())
+export const handler = handle(app)
 
 // Common endpoints ***********************************************************
 
@@ -21,20 +38,59 @@ app.get('/', ({json}) => json({ok: true, docs: 'https://github.com/depot/actions
 
 // Token exchange endpoints ***************************************************
 
-app.post('/claim', async ({env, req, json}) => {
+app.post('/claim', async ({req, json}) => {
+  const claimData = await req.json()
+
+  const result = claimSchema.safeParse(claimData)
+  if (!result.success) return json({error: `Invalid claim: ${result.error.issues}`}, 400)
+
   const issuer = new URL(req.url).origin
-  const id = env.CLAIM.newUniqueId()
-  const stub = env.CLAIM.get(id)
-  const data: InitData = {claimData: await req.json(), issuer, exchangeURL: `${issuer}/exchange/${id.toString()}`}
-  const res = await stub.claim(data)
-  return json(res)
+  const claimId = crypto.randomUUID()
+  const challengeCode = crypto.randomUUID()
+
+  await createClaim({claimId, issuer, claimData: result.data, challengeCode})
+  logger.info(`Started claim ${issuer}/exchange/${claimId}`, result.data)
+
+  return json({challengeCode, exchangeURL: `${issuer}/exchange/${claimId}`})
 })
 
-app.post('/exchange/:id', async ({env, req, text}) => {
-  const id = req.param('id')
-  const stub = env.CLAIM.get(env.CLAIM.idFromString(id))
-  const res = await stub.exchange()
-  return text(res)
+app.post('/exchange/:id', async ({req, text}) => {
+  const claimId = req.param('id')
+
+  const claim = await exchangeClaim(claimId)
+  if (!claim) throw new Error('challenge already used or not found')
+
+  const {issuer, claimData, challengeCode} = claim
+
+  const key = await getLatestKey()
+  if (!key) throw new Error('no key')
+
+  logger.info('Validating claim', claimData)
+
+  const validatedClaims = await retry(
+    () =>
+      validateClaim(
+        {
+          eventName: claimData.eventName,
+          owner: claimData.repo.owner,
+          repo: claimData.repo.repo,
+          runID: claimData.runID,
+          attempt: claimData.attempt,
+        },
+        challengeCode,
+      ),
+    {retries: 4, delay: 2000},
+  )
+
+  const token = await issueToken({
+    issuer,
+    keyID: key.id,
+    privateKey: key.privateKey,
+    audience: claimData.aud ?? 'https://github.com',
+    claims: validatedClaims,
+  })
+
+  return text(token)
 })
 
 // OIDC endpoints *************************************************************
@@ -80,11 +136,8 @@ app.get('/.well-known/openid-configuration', ({req, json}) => {
   })
 })
 
-app.get('/.well-known/jwks', async ({env, json}) => {
-  const keyIDs = await env.KEYS.list({prefix: 'key:'})
-  const keys: Key[] = (await Promise.all(keyIDs.keys.map((key) => env.KEYS.get<Key>(key.name, 'json')))).filter(
-    (key): key is Key => key !== null,
-  )
+app.get('/.well-known/jwks', async ({json}) => {
+  const keys = await getAllKeys()
   const jwks = {
     keys: keys.map((key) => ({
       kid: key.id,
@@ -102,26 +155,23 @@ app.get('/.well-known/jwks', async ({env, json}) => {
 
 const keyExpirationSeconds = 60 * 60 * 24 * 30 // 30 days
 
-app.post('/-/generate-key', async ({env, req, json}) => {
-  await authenticateAdmin(env, req)
+app.post('/-/generate-key', async ({req, json}) => {
+  await authenticateAdmin(req)
   const key = await generateKey()
-  await env.KEYS.put(`key:${key.id}`, JSON.stringify(key), {expirationTtl: keyExpirationSeconds})
-  await env.KEYS.put('latest-key', key.id, {expirationTtl: keyExpirationSeconds})
+  await storeKey(key, keyExpirationSeconds)
+  await setLatestKey(key.id)
   return json({ok: true})
 })
 
-app.get('/-/keys', async ({env, req, json}) => {
-  await authenticateAdmin(env, req)
-  const keyIDs = await env.KEYS.list({prefix: 'key:'})
-  const keys: Key[] = (await Promise.all(keyIDs.keys.map((key) => env.KEYS.get<Key>(key.name, 'json')))).filter(
-    (key): key is Key => key !== null,
-  )
+app.get('/-/keys', async ({req, json}) => {
+  await authenticateAdmin(req)
+  const keys = await getAllKeys()
   return json(keys)
 })
 
-app.post('/-/github-session', async ({env, req, json}) => {
-  await authenticateAdmin(env, req)
+app.post('/-/github-session', async ({req, json}) => {
+  await authenticateAdmin(req)
   const body = await req.json()
-  await env.KEYS.put('github-session', body.session)
+  await setGitHubSession(body.session)
   return json({ok: true})
 })

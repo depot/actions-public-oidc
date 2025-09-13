@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@actions/core": "^1.11.1",
-    "@actions/github": "^6.0.0",
+    "@actions/github": "^6.0.1",
     "@actions/http-client": "^2.2.3"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
-    "typescript": "^5.7.2"
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2"
   },
   "publishConfig": {
     "access": "public"
