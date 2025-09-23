@@ -35,6 +35,8 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
         headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
 
+  logger.info('Fetched GitHub run data', {claimData, run})
+
   if (run.status !== 'in_progress') throw new Error('run not in progress')
   if (run.repository.private) throw new Error('repository is private')
 
@@ -55,6 +57,8 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
 
   const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
   if (runningJobs.length === 0) throw new Error('no running jobs')
+
+  logger.info('Fetched running GitHub jobs data', {claimData, jobs: runningJobs})
 
   const promises: Promise<{jobID: number; validated: boolean}>[] = []
 
