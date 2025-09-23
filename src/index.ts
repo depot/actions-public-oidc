@@ -49,7 +49,7 @@ app.post('/claim', async ({req, json}) => {
   const challengeCode = crypto.randomUUID()
 
   await createClaim({claimId, issuer, claimData: result.data, challengeCode})
-  logger.info(`Started claim ${issuer}/exchange/${claimId}`, result.data)
+  logger.info(`Started claim ${issuer}/exchange/${claimId} from challenge code ${challengeCode}`, result.data)
 
   return json({challengeCode, exchangeURL: `${issuer}/exchange/${claimId}`})
 })
