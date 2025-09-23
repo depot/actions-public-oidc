@@ -1,3 +1,4 @@
+import {addMinutes, getUnixTime} from 'date-fns'
 import type {webcrypto} from 'node:crypto'
 import {base64url} from 'rfc4648'
 import type {TokenClaims} from '../types'
@@ -21,14 +22,15 @@ export async function issueToken({issuer, audience, keyID, privateKey: privateKe
   const privateKey = await importPrivateKey(keyID, privateKeyData)
 
   const header = {alg: 'RS256', typ: 'JWT', kid: keyID}
-  const timestamp = Math.floor(Date.now() / 1000) // seconds
+  const now = new Date()
+  const timestamp = getUnixTime(now)
   const payload = {
     aud: audience,
     iss: issuer,
     jti: crypto.randomUUID(),
     iat: timestamp,
     nbf: timestamp,
-    exp: timestamp + 60 * 5, // 5 minutes
+    exp: getUnixTime(addMinutes(now, 5)),
     ...claims,
   }
 

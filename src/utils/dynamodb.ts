@@ -1,6 +1,6 @@
 import {DynamoDBClient} from '@aws-sdk/client-dynamodb'
 import {DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand} from '@aws-sdk/lib-dynamodb'
-import {addSeconds} from 'date-fns'
+import {addMinutes, addSeconds, getUnixTime} from 'date-fns'
 import type {webcrypto} from 'node:crypto'
 import type {ClaimSchema} from '../types'
 import type {JsonWebKeyWithKid, Key} from './oidc'
@@ -61,7 +61,7 @@ export async function createClaim(data: {
   claimData: ClaimSchema
   challengeCode: string
 }): Promise<void> {
-  const ttl = Math.floor(addSeconds(new Date(), 5 * 60).getTime() / 1000)
+  const ttl = getUnixTime(addMinutes(new Date(), 5))
 
   await docClient.send(
     new PutCommand({
@@ -131,7 +131,7 @@ export async function storeKey(key: Key, expirationSeconds: number): Promise<voi
         publicKey: key.publicKey,
         privateKey: key.privateKey,
         createdAt: new Date().toISOString(),
-        ttl: Math.floor(Date.now() / 1000) + expirationSeconds,
+        ttl: getUnixTime(addSeconds(new Date(), expirationSeconds)),
       } satisfies KeyRecord,
     }),
   )
