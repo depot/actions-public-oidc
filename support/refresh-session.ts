@@ -57,7 +57,7 @@ async function run() {
       page.getByRole('button', {name: 'Confirm'}).click(),
     ])
     await Promise.race([
-      await page.getByTitle(process.env.USERNAME).click(),
+      page.getByTitle(process.env.USERNAME).click(),
       page.getByLabel('Open user account menu').click(),
       page.getByLabel('Open user navigation menu').click(),
     ])
