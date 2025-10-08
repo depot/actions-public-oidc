@@ -166,10 +166,14 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
     const body = (await stepsRes.json()) as {id: string; status: string}[]
     const runningSteps = body.filter((step) => step.status === 'in_progress')
 
+    if (!runningSteps.length) {
+      logger.info(`No running steps for job ${jobID}`, args)
+    }
+
     for (const step of runningSteps) {
       for (let i = 0; i < 4; i++) {
         try {
-          logger.info(`Fetching backscroll for step, attempt ${i + 1}`, step)
+          logger.info(`Fetching backscroll for step, attempt ${i + 1}`, {...args, ...step})
           const backscrollRes = await fetch(`${jobURL}/steps/${step.id}/backscroll`, {
             headers: {
               Accept: 'application/json',
@@ -188,7 +192,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
             return true
           }
         } catch (e) {
-          logger.error(`Error checking backscroll for step: ${e}`, step)
+          logger.error(`Error checking backscroll for step: ${e}`, {...args, ...step})
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000))
