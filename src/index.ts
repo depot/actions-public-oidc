@@ -10,9 +10,10 @@ import {claimSchema} from './types'
 import {authenticateAdmin} from './utils/auth'
 import {
   createClaim,
-  exchangeClaim,
   getAllKeys,
+  getClaim,
   getLatestKey,
+  markClaimAsExchanged,
   setGitHubSession,
   setLatestKey,
   storeKey,
@@ -57,8 +58,8 @@ app.post('/claim', async ({req, json}) => {
 app.post('/exchange/:id', async ({req, text}) => {
   const claimId = req.param('id')
 
-  const claim = await exchangeClaim(claimId)
-  if (!claim) throw new Error('challenge already used or not found')
+  const claim = await getClaim(claimId)
+  if (!claim || claim.exchanged) throw new Error('challenge already used or not found')
 
   const {issuer, claimData, challengeCode} = claim
 
@@ -89,6 +90,8 @@ app.post('/exchange/:id', async ({req, text}) => {
     audience: claimData.aud ?? 'https://github.com',
     claims: validatedClaims,
   })
+
+  await markClaimAsExchanged(claimId)
 
   return text(token)
 })
