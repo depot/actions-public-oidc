@@ -40,7 +40,7 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
   if (run.status !== 'in_progress') throw new Error('run not in progress')
   if (run.repository.private) throw new Error('repository is private')
 
-  const data = claimData.attempt
+  const jobs = claimData.attempt
     ? await octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs', {
         owner: claimData.owner,
         repo: claimData.repo,
@@ -53,7 +53,7 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
         run_id: claimData.runID,
       })
 
-  const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
+  const runningJobs = jobs.filter((job) => job.status === 'in_progress')
   if (runningJobs.length === 0) throw new Error('no running jobs')
 
   logger.info('Fetched running GitHub jobs data', {claimData, jobs: runningJobs})
