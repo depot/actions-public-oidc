@@ -12,7 +12,6 @@
     "@aws-sdk/client-dynamodb": "^3.888.0",
     "@aws-sdk/lib-dynamodb": "^3.888.0",
     "@hono/otel": "^0.5.0",
-    "@octokit/request": "^10.0.3",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.205.0",
     "@opentelemetry/sdk-node": "^0.205.0",
@@ -21,6 +20,7 @@
     "abort-controller-x": "^0.4.3",
     "date-fns": "^4.1.0",
     "hono": "^4.9.7",
+    "octokit": "^5.0.4",
     "rfc4648": "^1.5.4",
     "zod": "^4.1.8"
   },
