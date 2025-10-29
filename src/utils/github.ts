@@ -1,4 +1,4 @@
-import {request} from '@octokit/request'
+import {Octokit} from 'octokit'
 import type {TokenClaims} from '../types'
 import {getGitHubSession} from './dynamodb'
 import {logger} from './logger'
@@ -20,19 +20,19 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
 
   logger.info('Validating claim', claimData)
 
+  const octokit = new Octokit({auth: GITHUB_TOKEN})
+
   const {data: run} = claimData.attempt
-    ? await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
+    ? await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
         owner: claimData.owner,
         repo: claimData.repo,
         run_id: claimData.runID,
         attempt_number: claimData.attempt,
-        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
-    : await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
+    : await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
         owner: claimData.owner,
         repo: claimData.repo,
         run_id: claimData.runID,
-        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
 
   logger.info('Fetched GitHub run data', {claimData, run})
@@ -40,19 +40,17 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
   if (run.status !== 'in_progress') throw new Error('run not in progress')
   if (run.repository.private) throw new Error('repository is private')
 
-  const {data} = claimData.attempt
-    ? await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs', {
+  const data = claimData.attempt
+    ? await octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs', {
         owner: claimData.owner,
         repo: claimData.repo,
         run_id: claimData.runID,
         attempt_number: claimData.attempt,
-        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
-    : await request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+    : await octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
         owner: claimData.owner,
         repo: claimData.repo,
         run_id: claimData.runID,
-        headers: {authorization: `token ${GITHUB_TOKEN}`},
       })
 
   const runningJobs = data.jobs.filter((job) => job.status === 'in_progress')
