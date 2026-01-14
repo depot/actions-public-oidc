@@ -4,7 +4,30 @@ import {getGitHubSession} from './dynamodb'
 import {logger} from './logger'
 import {userAgent} from './userAgent'
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN
+function getGitHubTokens(): string[] {
+  const tokensEnv = process.env.GITHUB_TOKENS
+  if (tokensEnv) {
+    const tokens = tokensEnv.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+    if (tokens.length > 0) return tokens
+  }
+
+  const singleToken = process.env.GITHUB_TOKEN
+  if (singleToken) return [singleToken]
+
+  return []
+}
+
+function getRandomToken(): string {
+  const tokens = getGitHubTokens()
+  if (tokens.length === 0) {
+    throw new Error('No GitHub tokens configured. Set GITHUB_TOKENS or GITHUB_TOKEN environment variable.')
+  }
+  return tokens[Math.floor(Math.random() * tokens.length)]
+}
+
+function createOctokit(): Octokit {
+  return new Octokit({auth: getRandomToken()})
+}
 
 interface ClaimData {
   owner: string
@@ -20,7 +43,7 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
 
   logger.info('Validating claim', claimData)
 
-  const octokit = new Octokit({auth: GITHUB_TOKEN})
+  const octokit = createOctokit()
 
   const {data: run} = claimData.attempt
     ? await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
