@@ -83,6 +83,9 @@ app.post('/exchange/:id', async ({req, text}) => {
     {retries: 4, delay: 2000},
   )
 
+  // Redeem the challenge before signing so concurrent exchanges cannot issue multiple tokens.
+  await markClaimAsExchanged(claimId)
+
   const token = await issueToken({
     issuer,
     keyID: key.id,
@@ -90,8 +93,6 @@ app.post('/exchange/:id', async ({req, text}) => {
     audience: claimData.aud ?? 'https://github.com',
     claims: validatedClaims,
   })
-
-  await markClaimAsExchanged(claimId)
 
   return text(token)
 })

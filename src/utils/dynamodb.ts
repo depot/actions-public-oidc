@@ -3,7 +3,6 @@ import {DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateComm
 import {addMinutes, addSeconds, getUnixTime} from 'date-fns'
 import type {webcrypto} from 'node:crypto'
 import type {ClaimSchema} from '../types'
-import {logger} from './logger'
 import type {JsonWebKeyWithKid, Key} from './oidc'
 
 /**
@@ -90,26 +89,29 @@ export async function getClaim(claimId: string): Promise<ClaimRecord | null> {
     new GetCommand({TableName: TABLE_NAME, Key: {pk: `CLAIM#${claimId}`, sk: 'CLAIM'}}),
   )
   if (!result.Item) return null
-  return result.Item as ClaimRecord
+  const claim = result.Item as ClaimRecord
+  if (claim.ttl <= getUnixTime(new Date())) return null
+  return claim
 }
 
 /**
  * Mark a claim as successfully exchanged
  */
 export async function markClaimAsExchanged(claimId: string): Promise<void> {
-  try {
-    await docClient.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: {pk: `CLAIM#${claimId}`, sk: 'CLAIM'},
-        UpdateExpression: 'SET exchanged = :true',
-        ConditionExpression: 'attribute_exists(pk)',
-        ExpressionAttributeValues: {':true': true},
-      }),
-    )
-  } catch (error) {
-    logger.error('Failed to mark claim as exchanged', {claimId, error})
-  }
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {pk: `CLAIM#${claimId}`, sk: 'CLAIM'},
+      UpdateExpression: 'SET exchanged = :true',
+      ConditionExpression: 'attribute_exists(pk) AND exchanged = :false AND #ttl > :now',
+      ExpressionAttributeNames: {'#ttl': 'ttl'},
+      ExpressionAttributeValues: {
+        ':false': false,
+        ':true': true,
+        ':now': getUnixTime(new Date()),
+      },
+    }),
+  )
 }
 
 /**
