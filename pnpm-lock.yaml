@@ -16,7 +16,7 @@ importers:
         version: 3.888.0(@aws-sdk/client-dynamodb@3.888.0)
       '@hono/otel':
         specifier: ^0.5.0
-        version: 0.5.0(hono@4.9.7)
+        version: 0.5.0(hono@4.11.10)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -39,8 +39,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       hono:
-        specifier: ^4.9.7
-        version: 4.9.7
+        specifier: ^4.11.10
+        version: 4.11.10
       octokit:
         specifier: ^5.0.4
         version: 5.0.4
@@ -1301,8 +1301,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.9.7:
-    resolution: {integrity: sha512-t4Te6ERzIaC48W3x4hJmBwgNlLhmiEdEE5ViYb02ffw4ignHNHa5IBtPjmbKstmtKa8X6C35iWwK4HaqvrzG9w==}
+  hono@4.11.10:
+    resolution: {integrity: sha512-kyWP5PAiMooEvGrA9jcD3IXF7ATu8+o7B3KCbPXid5se52NPqnOpM/r9qeW2heMnOekF4kqR1fXJqCYeCLKrZg==}
     engines: {node: '>=16.9.0'}
 
   import-in-the-middle@1.14.2:
@@ -2026,11 +2026,11 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
-  '@hono/otel@0.5.0(hono@4.9.7)':
+  '@hono/otel@0.5.0(hono@4.11.10)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.37.0
-      hono: 4.9.7
+      hono: 4.11.10
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
@@ -3225,7 +3225,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.9.7: {}
+  hono@4.11.10: {}
 
   import-in-the-middle@1.14.2:
     dependencies:
