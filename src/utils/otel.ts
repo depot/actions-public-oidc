@@ -1,11 +1,10 @@
 import * as opentelemetry from '@opentelemetry/api'
-import {OTLPTraceExporter} from '@opentelemetry/exporter-trace-otlp-http'
-
 import {NodeSDK} from '@opentelemetry/sdk-node'
 import {ConsoleSpanExporter, NoopSpanProcessor} from '@opentelemetry/sdk-trace-node'
+import {createTraceExporter} from './otel-edge'
 
 const sdk = new NodeSDK({
-  traceExporter: process.env.NODE_ENV === 'production' ? new OTLPTraceExporter() : new ConsoleSpanExporter(),
+  traceExporter: process.env.NODE_ENV === 'production' ? createTraceExporter() : new ConsoleSpanExporter(),
   spanProcessors:
     process.env.NODE_ENV === 'production' || process.env.ENABLE_TRACING ? undefined : [new NoopSpanProcessor()],
   // Currently we do not automatically instrument this service as this creates a LOT of unused spans.
