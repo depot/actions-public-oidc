@@ -21,9 +21,10 @@ async function main() {
     {monitorSlug: 'actions-public-oidc-refresh-session', status: 'in_progress'},
     {
       schedule: {type: 'crontab', value: '23 1 * * *'},
-      checkinMargin: 120, // 120 minutes
+      checkinMargin: 360, // 360 minutes
       maxRuntime: 60, // 60 minutes
       timezone: 'Etc/UTC',
+      failureIssueThreshold: 2,
     },
   )
 
