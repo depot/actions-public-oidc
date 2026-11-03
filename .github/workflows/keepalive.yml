@@ -1,0 +1,24 @@
+name: keepalive
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 0 1,15 * *' # 00:00 on the 1st and 15th of every month
+
+# GitHub disables scheduled workflows in public repositories after 60 days without repository activity.
+# Pushing to a dedicated branch counts as activity and keeps refresh-session and rotate-keys enabled.
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Push keepalive commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -m 'chore: keep scheduled workflows enabled'
+          git push --force origin HEAD:keepalive
