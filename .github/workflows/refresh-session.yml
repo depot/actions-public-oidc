@@ -6,7 +6,10 @@ on:
 
 jobs:
   refresh-session:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,6 +54,11 @@ jobs:
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Keep schedule enabled
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/refresh-session.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Save screenshot
         uses: actions/upload-artifact@v4
