@@ -2,6 +2,7 @@ import {Octokit} from 'octokit'
 import type {TokenClaims} from '../types'
 import {getGitHubSession} from './dynamodb'
 import {logger} from './logger'
+import type {Redacted} from './redacted'
 import {userAgent} from './userAgent'
 
 function getGitHubTokens(): string[] {
@@ -149,7 +150,7 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
 }
 
 interface BackscrollArgs {
-  session: string
+  session: Redacted<string>
   org: string
   repo: string
   runID: number
@@ -157,53 +158,67 @@ interface BackscrollArgs {
   code: string
 }
 
+/** Why a backscroll check returned; `no_backscroll_link` usually means the GitHub session is no longer valid. */
+type BackscrollOutcome = 'validated' | 'no_backscroll_link' | 'no_running_steps' | 'code_not_found' | 'error'
+
+/** Emits one `Backscroll validation` event per check, with the outcome and the context to debug it. */
 async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promise<boolean> {
-  logger.info('Validating challenge with backscroll', args)
+  const {session, org, repo, runID, jobID, code} = args
+  const cookie = `user_session=${session.value()}`
+  const startedAt = Date.now()
+  const event: Record<string, unknown> = {org, repo, runID, jobID, challengeCode: code}
+  let attempts = 0
+  let outcome: BackscrollOutcome = 'error'
 
   try {
-    const {session, org, repo, runID, jobID, code} = args
     const backscrollRegex = new RegExp(`/${org}/${repo}/actions/runs/${runID}/jobs/(\\w+)/steps/[\\w-]+/backscroll`)
     const pageRes = await fetch(`https://github.com/${org}/${repo}/actions/runs/${runID}/job/${jobID}`, {
       headers: {
         Accept: 'text/html,*/*',
-        Cookie: `user_session=${session}`,
+        Cookie: cookie,
         'User-Agent': userAgent,
       },
     })
+    event.pageStatus = pageRes.status
     const pageText = await pageRes.text()
     const match = pageText.match(backscrollRegex)
     if (!match) {
-      logger.info('No backscroll job ID found', args)
+      outcome = 'no_backscroll_link'
       return false
     }
     const backscrollJobID = match[1]
+    event.backscrollJobID = backscrollJobID
 
     const jobURL = `https://github.com/${org}/${repo}/actions/runs/${runID}/jobs/${backscrollJobID}`
     const stepsRes = await fetch(`${jobURL}/steps`, {
       headers: {
         Accept: 'application/json',
-        Cookie: `user_session=${session}`,
+        Cookie: cookie,
         'User-Agent': userAgent,
       },
     })
+    event.stepsStatus = stepsRes.status
     const body = (await stepsRes.json()) as {id: string; status: string}[]
     const runningSteps = body.filter((step) => step.status === 'in_progress')
+    event.runningSteps = runningSteps.length
 
     if (!runningSteps.length) {
-      logger.info(`No running steps for job ${jobID}`, args)
+      outcome = 'no_running_steps'
+      return false
     }
 
     for (const step of runningSteps) {
       for (let i = 0; i < 4; i++) {
+        attempts++
         try {
-          logger.info(`Fetching backscroll for step, attempt ${i + 1}`, {...args, ...step})
           const backscrollRes = await fetch(`${jobURL}/steps/${step.id}/backscroll`, {
             headers: {
               Accept: 'application/json',
-              Cookie: `user_session=${session}`,
+              Cookie: cookie,
               'User-Agent': userAgent,
             },
           })
+          event.backscrollStatus = backscrollRes.status
           const body = (await backscrollRes.json()) as {lines?: {line: string}[]}
 
           if (Array.isArray(body.lines)) {
@@ -211,18 +226,24 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
           }
 
           if (body.lines?.some((line) => line.line.includes(code))) {
-            logger.info(`Challenge ${code} validated with backscroll`, args)
+            event.stepID = step.id
+            outcome = 'validated'
             return true
           }
         } catch (e) {
-          logger.error(`Error checking backscroll for step: ${e}`, {...args, ...step})
+          event.lastAttemptError = `${e}`
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
+    outcome = 'code_not_found'
   } catch (e) {
-    logger.error(`Error fething backscroll: ${e}`, args)
+    event.error = `${e}`
+  } finally {
+    const context = {...event, attempts, outcome, durationMs: Date.now() - startedAt}
+    if (outcome === 'error') logger.error('Backscroll validation', context)
+    else logger.info('Backscroll validation', context)
   }
 
   return false
