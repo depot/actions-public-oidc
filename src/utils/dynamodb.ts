@@ -4,6 +4,7 @@ import {addMinutes, addSeconds, getUnixTime} from 'date-fns'
 import type {webcrypto} from 'node:crypto'
 import type {ClaimSchema} from '../types'
 import type {JsonWebKeyWithKid, Key} from './oidc'
+import {Redacted} from './redacted'
 
 /**
  * DynamoDB Single Table Design structure:
@@ -215,10 +216,10 @@ export async function setGitHubSession(session: string): Promise<void> {
 /**
  * Get the GitHub session
  */
-export async function getGitHubSession(): Promise<string | null> {
+export async function getGitHubSession(): Promise<Redacted<string> | null> {
   const result = await docClient.send(
     new GetCommand({TableName: TABLE_NAME, Key: {pk: 'CONFIG', sk: 'GITHUB_SESSION'}}),
   )
   if (!result.Item) return null
-  return (result.Item as ConfigRecord).value
+  return new Redacted((result.Item as ConfigRecord).value)
 }
