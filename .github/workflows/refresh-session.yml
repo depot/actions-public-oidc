@@ -38,16 +38,39 @@ jobs:
           service-account-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
 
       - name: Load credentials
-        uses: 1password/load-secrets-action@v1
-        env:
-          USERNAME: op://actions-oidc/GitHub - depot-public-oidc/username
-          PASSWORD: op://actions-oidc/GitHub - depot-public-oidc/password
+        run: |
+          for attempt in 1 2 3; do
+            if USERNAME="$(op read 'op://actions-oidc/GitHub - depot-public-oidc/username')" \
+              && PASSWORD="$(op read 'op://actions-oidc/GitHub - depot-public-oidc/password')"; then
+              echo "::add-mask::$USERNAME"
+              echo "::add-mask::$PASSWORD"
+              echo "USERNAME=$USERNAME" >> "$GITHUB_ENV"
+              echo "PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "1Password credential read failed (attempt $attempt of 3); retrying in 15s" >&2
+              sleep 15
+            fi
+          done
+          echo "1Password credential read failed after 3 attempts" >&2
+          exit 1
 
       - name: Load OTP token
         run: |
-          export OTP="$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)"
-          echo "::add-mask::$OTP"
-          echo "OTP=$OTP" >> "$GITHUB_ENV"
+          for attempt in 1 2 3; do
+            if OTP="$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)"; then
+              echo "::add-mask::$OTP"
+              echo "OTP=$OTP" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "1Password OTP read failed (attempt $attempt of 3); retrying in 15s" >&2
+              sleep 15
+            fi
+          done
+          echo "1Password OTP read failed after 3 attempts" >&2
+          exit 1
 
       - name: Refresh session
         run: pnpm refresh-session || pnpm refresh-session
