@@ -1,4 +1,4 @@
-import {DynamoDBClient} from '@aws-sdk/client-dynamodb'
+import {ConditionalCheckFailedException, DynamoDBClient} from '@aws-sdk/client-dynamodb'
 import {DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand} from '@aws-sdk/lib-dynamodb'
 import {addMinutes, addSeconds, getUnixTime} from 'date-fns'
 import type {webcrypto} from 'node:crypto'
@@ -96,23 +96,30 @@ export async function getClaim(claimId: string): Promise<ClaimRecord | null> {
 }
 
 /**
- * Mark a claim as successfully exchanged
+ * Mark a claim as successfully exchanged. Returns false when the claim is already exchanged or expired, which the
+ * condition expression rejects.
  */
-export async function markClaimAsExchanged(claimId: string): Promise<void> {
-  await docClient.send(
-    new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: {pk: `CLAIM#${claimId}`, sk: 'CLAIM'},
-      UpdateExpression: 'SET exchanged = :true',
-      ConditionExpression: 'attribute_exists(pk) AND exchanged = :false AND #ttl > :now',
-      ExpressionAttributeNames: {'#ttl': 'ttl'},
-      ExpressionAttributeValues: {
-        ':false': false,
-        ':true': true,
-        ':now': getUnixTime(new Date()),
-      },
-    }),
-  )
+export async function markClaimAsExchanged(claimId: string): Promise<boolean> {
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: {pk: `CLAIM#${claimId}`, sk: 'CLAIM'},
+        UpdateExpression: 'SET exchanged = :true',
+        ConditionExpression: 'attribute_exists(pk) AND exchanged = :false AND #ttl > :now',
+        ExpressionAttributeNames: {'#ttl': 'ttl'},
+        ExpressionAttributeValues: {
+          ':false': false,
+          ':true': true,
+          ':now': getUnixTime(new Date()),
+        },
+      }),
+    )
+    return true
+  } catch (err) {
+    if (err instanceof ConditionalCheckFailedException) return false
+    throw err
+  }
 }
 
 /**

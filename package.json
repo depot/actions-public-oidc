@@ -7,7 +7,7 @@
     "clean": "rm -rf dist",
     "refresh-session": "tsx support/refresh-session.ts",
     "refresh-session:local": "env OTP=\"$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --otp)\" USERNAME=depot-public-oidc PASSWORD=\"$(op item get --vault 'actions-oidc' 'GitHub - depot-public-oidc' --fields password --reveal)\" LOCAL=true tsx support/refresh-session.ts",
-    "test": "node --import tsx --test src/utils/otel-edge.test.ts"
+    "test": "node --import tsx --test src/utils/otel-edge.test.ts src/index.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.888.0",
