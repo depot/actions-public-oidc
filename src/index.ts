@@ -3,8 +3,9 @@ import './utils/otel'
 
 // Import everything else after
 import {otel} from '@hono/otel'
-import {Hono} from 'hono'
+import {Hono, type HonoRequest} from 'hono'
 import {handle} from 'hono/aws-lambda'
+import {HTTPException} from 'hono/http-exception'
 import {logger as loggerMiddleware} from 'hono/logger'
 import {claimSchema} from './types'
 import {authenticateAdmin} from './utils/auth'
@@ -23,7 +24,7 @@ import {logger} from './utils/logger'
 import {generateKey, issueToken} from './utils/oidc'
 import {retry} from './utils/retry'
 
-const app = new Hono()
+export const app = new Hono()
 app.use(otel())
 app.use(loggerMiddleware())
 export const handler = handle(app)
@@ -31,16 +32,27 @@ export const handler = handle(app)
 // Common endpoints ***********************************************************
 
 app.onError((err, {json}) => {
+  // Rejections the caller can correct answer their own status; only unexpected faults are server errors.
+  if (err instanceof HTTPException) return json({error: err.message}, err.status)
+
   console.error(err)
   return json({error: err.message}, 500)
 })
 app.notFound(({json}) => json({error: 'not found'}, 404))
 app.get('/', ({json}) => json({ok: true, docs: 'https://github.com/depot/actions-public-oidc'}))
 
+async function parseJSONBody(req: HonoRequest<string>): Promise<unknown> {
+  try {
+    return await req.json()
+  } catch {
+    throw new HTTPException(400, {message: 'request body must be JSON'})
+  }
+}
+
 // Token exchange endpoints ***************************************************
 
 app.post('/claim', async ({req, json}) => {
-  const claimData = await req.json()
+  const claimData = await parseJSONBody(req)
 
   const result = claimSchema.safeParse(claimData)
   if (!result.success) return json({error: `Invalid claim: ${result.error.issues}`}, 400)
@@ -59,7 +71,8 @@ app.post('/exchange/:id', async ({req, text}) => {
   const claimId = req.param('id')
 
   const claim = await getClaim(claimId)
-  if (!claim || claim.exchanged) throw new Error('challenge already used or not found')
+  if (!claim) throw new HTTPException(404, {message: 'challenge not found'})
+  if (claim.exchanged) throw new HTTPException(409, {message: 'challenge already used'})
 
   const {issuer, claimData, challengeCode} = claim
 
@@ -84,7 +97,8 @@ app.post('/exchange/:id', async ({req, text}) => {
   )
 
   // Redeem the challenge before signing so concurrent exchanges cannot issue multiple tokens.
-  await markClaimAsExchanged(claimId)
+  const redeemed = await markClaimAsExchanged(claimId)
+  if (!redeemed) throw new HTTPException(409, {message: 'challenge already used'})
 
   const token = await issueToken({
     issuer,
@@ -175,7 +189,7 @@ app.get('/-/keys', async ({req, json}) => {
 
 app.post('/-/github-session', async ({req, json}) => {
   await authenticateAdmin(req)
-  const body = await req.json()
+  const body = (await parseJSONBody(req)) as {session: string}
   await setGitHubSession(body.session)
   return json({ok: true})
 })

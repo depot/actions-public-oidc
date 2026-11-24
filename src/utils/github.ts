@@ -1,4 +1,5 @@
-import {Octokit} from 'octokit'
+import {HTTPException} from 'hono/http-exception'
+import {Octokit, RequestError} from 'octokit'
 import type {TokenClaims} from '../types'
 import {getGitHubSession} from './dynamodb'
 import {logger} from './logger'
@@ -8,7 +9,10 @@ import {userAgent} from './userAgent'
 function getGitHubTokens(): string[] {
   const tokensEnv = process.env.GITHUB_TOKENS
   if (tokensEnv) {
-    const tokens = tokensEnv.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+    const tokens = tokensEnv
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
     if (tokens.length > 0) return tokens
   }
 
@@ -38,6 +42,25 @@ interface ClaimData {
   attempt?: number
 }
 
+/**
+ * GitHub answers 404 both for a run or attempt ID that does not exist and for a token that can no longer see the
+ * repository, so the 404 keeps an error log with the run it asked for. Every other GitHub error keeps its own handling.
+ */
+async function githubRequest<T>(
+  request: Promise<T>,
+  context: {owner: string; repo: string; runID: number},
+): Promise<T> {
+  try {
+    return await request
+  } catch (err) {
+    if (err instanceof RequestError && err.status === 404) {
+      logger.error('GitHub run not found', {...context, message: err.message})
+      throw new HTTPException(404, {message: 'github run not found'})
+    }
+    throw err
+  }
+}
+
 export async function validateClaim(claimData: ClaimData, challengeCode: string): Promise<TokenClaims> {
   const session = await getGitHubSession()
   if (!session) throw new Error('no github session')
@@ -46,45 +69,53 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
 
   const octokit = createOctokit()
 
-  const {data: run} = claimData.attempt
-    ? await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
-        owner: claimData.owner,
-        repo: claimData.repo,
-        run_id: claimData.runID,
-        attempt_number: claimData.attempt,
-      })
-    : await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
-        owner: claimData.owner,
-        repo: claimData.repo,
-        run_id: claimData.runID,
-      })
+  const {data: run} = await githubRequest(
+    claimData.attempt
+      ? octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}', {
+          owner: claimData.owner,
+          repo: claimData.repo,
+          run_id: claimData.runID,
+          attempt_number: claimData.attempt,
+        })
+      : octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', {
+          owner: claimData.owner,
+          repo: claimData.repo,
+          run_id: claimData.runID,
+        }),
+    {owner: claimData.owner, repo: claimData.repo, runID: claimData.runID},
+  )
 
   logger.info('Fetched GitHub run data', {claimData, run})
 
-  if (run.event !== 'pull_request') throw new Error('run is not a pull request')
-  if (run.repository.private) throw new Error('repository is private')
+  if (run.event !== 'pull_request') throw new HTTPException(422, {message: 'run is not a pull request'})
+  if (run.repository.private) throw new HTTPException(403, {message: 'repository is private'})
   if (!run.status) throw new Error('run status unavailable')
-  if (run.status === 'completed' || run.conclusion !== null) throw new Error('run already completed')
+  if (run.status === 'completed' || run.conclusion !== null) {
+    throw new HTTPException(409, {message: 'run already completed'})
+  }
 
-  const jobs = claimData.attempt
-    ? await octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs', {
-        owner: claimData.owner,
-        repo: claimData.repo,
-        run_id: claimData.runID,
-        attempt_number: claimData.attempt,
-      })
-    : await octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
-        owner: claimData.owner,
-        repo: claimData.repo,
-        run_id: claimData.runID,
-      })
+  const jobs = await githubRequest(
+    claimData.attempt
+      ? octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs', {
+          owner: claimData.owner,
+          repo: claimData.repo,
+          run_id: claimData.runID,
+          attempt_number: claimData.attempt,
+        })
+      : octokit.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', {
+          owner: claimData.owner,
+          repo: claimData.repo,
+          run_id: claimData.runID,
+        }),
+    {owner: claimData.owner, repo: claimData.repo, runID: claimData.runID},
+  )
 
   const runningJobs = jobs.filter((job) => job.status === 'in_progress')
-  if (runningJobs.length === 0) throw new Error('no running jobs')
+  if (runningJobs.length === 0) throw new HTTPException(422, {message: 'no running jobs'})
 
   logger.info('Fetched running GitHub jobs data', {claimData, jobs: runningJobs})
 
-  const promises: Promise<{jobID: number; validated: boolean}>[] = []
+  const promises: Promise<{jobID: number; validated: boolean; outcome: BackscrollOutcome}>[] = []
 
   for (const job of runningJobs) {
     const jobID = job.id
@@ -99,17 +130,24 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
         runID: claimData.runID,
         jobID: jobID,
         code: challengeCode,
-      }).then((validated) => {
-        return {jobID, validated}
+      }).then((result) => {
+        return {jobID, ...result}
       }),
     )
   }
 
   const all = await Promise.allSettled(promises)
+  const checks = all.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
 
-  const validated = all.find((result) => result.status === 'fulfilled' && result.value.validated)
-  if (!validated) throw new Error('no validated jobs')
-  if (validated.status === 'rejected') throw new Error('no validated jobs')
+  const validated = checks.find((check) => check.validated)
+  if (!validated) {
+    // A page without its backscroll link means the session can no longer read the run, and an error means the check
+    // itself failed. Both are faults of the issuer, so they stay 500 and keep their log.
+    if (checks.some((check) => check.outcome === 'no_backscroll_link' || check.outcome === 'error')) {
+      throw new Error('github session cannot read the run page')
+    }
+    throw new HTTPException(422, {message: 'no validated jobs'})
+  }
   if (!run.triggering_actor) throw new Error('no triggering actor')
 
   const validatedClaims = {
@@ -123,7 +161,7 @@ export async function validateClaim(claimData: ClaimData, challengeCode: string)
     head_repository_owner: run.head_repository.owner.login,
     head_repository: run.head_repository.full_name,
     head_sha: run.head_sha,
-    job_id: validated.value.jobID.toString(),
+    job_id: validated.jobID.toString(),
     repository_id: run.repository.id.toString(),
     repository_owner_id: run.repository.owner.id.toString(),
     repository_owner: run.repository.owner.login,
@@ -161,8 +199,13 @@ interface BackscrollArgs {
 /** Why a backscroll check returned; `no_backscroll_link` usually means the GitHub session is no longer valid. */
 type BackscrollOutcome = 'validated' | 'no_backscroll_link' | 'no_running_steps' | 'code_not_found' | 'error'
 
+interface ValidatedChallenge {
+  validated: boolean
+  outcome: BackscrollOutcome
+}
+
 /** Emits one `Backscroll validation` event per check, with the outcome and the context to debug it. */
-async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promise<boolean> {
+async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promise<ValidatedChallenge> {
   const {session, org, repo, runID, jobID, code} = args
   const cookie = `user_session=${session.value()}`
   const startedAt = Date.now()
@@ -184,7 +227,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
     const match = pageText.match(backscrollRegex)
     if (!match) {
       outcome = 'no_backscroll_link'
-      return false
+      return {validated: false, outcome}
     }
     const backscrollJobID = match[1]
     event.backscrollJobID = backscrollJobID
@@ -204,7 +247,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
 
     if (!runningSteps.length) {
       outcome = 'no_running_steps'
-      return false
+      return {validated: false, outcome}
     }
 
     for (const step of runningSteps) {
@@ -228,7 +271,7 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
           if (body.lines?.some((line) => line.line.includes(code))) {
             event.stepID = step.id
             outcome = 'validated'
-            return true
+            return {validated: true, outcome}
           }
         } catch (e) {
           event.lastAttemptError = `${e}`
@@ -246,5 +289,5 @@ async function validateChallengeCodeWithBackscroll(args: BackscrollArgs): Promis
     else logger.info('Backscroll validation', context)
   }
 
-  return false
+  return {validated: false, outcome}
 }
