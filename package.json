@@ -36,6 +36,11 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   },
+  "pnpm": {
+    "overrides": {
+      "protobufjs": "^7.6.6"
+    }
+  },
   "prettier": {
     "bracketSpacing": false,
     "printWidth": 120,
